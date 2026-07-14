@@ -1,0 +1,38 @@
+[project]
+name = "babylm-recursive-hybrid"
+version = "0.1.0"
+description = "Weight-tied depth-recursive transformer with hybrid Gated DeltaNet + GQA attention for BabyLM 2026 (non-competition track)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.2",
+    "transformers>=4.40",
+    "tokenizers>=0.19",
+    "datasets>=2.19",
+    "einops>=0.7",
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+    "wandb>=0.17",
+    "tqdm>=4.66",
+    "flash-linear-attention>=0.5",
+    "modal>=1.5.1",
+]
+
+[project.optional-dependencies]
+# Gated DeltaNet reference kernels (GPU/Triton only). Install on the training box:
+#   uv pip install -e ".[fla]"
+fla = ["flash-linear-attention>=0.1"]
+# FlashAttention-3 for the GQA layers — Hopper (sm_90 / H100) ONLY. Not on PyPI.
+# On the training box, install the prebuilt wheel (module: `flash_attn_3`):
+#   pip install --no-cache-dir \
+#     "https://download.pytorch.org/whl/cu130/flash_attn_3-3.0.0-cp39-abi3-manylinux_2_28_x86_64.whl"
+# or build from the flash-attention repo's hopper/ dir (module: `flash_attn_interface`).
+# Absent elsewhere -> GQA auto-falls back to torch SDPA. See notes/design_decisions.md.
+fa3 = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

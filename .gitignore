@@ -1,0 +1,64 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv
+venv/
+
+# Data + model artifacts (large; regenerate via scripts)
+data/
+tokenizer/artifacts/
+checkpoints/
+wandb/
+*.bin
+*.pt
+*.ckpt
+*.pth
+*.safetensors
+
+# Eval clone (vendored separately)
+eval/babylm-eval/
+
+# LaTeX build artifacts (paper/latex/main.pdf is committed as the deliverable)
+*.aux
+*.bbl
+*.blg
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.xdv
+*.bcf
+*.run.xml
+*.lof
+*.lot
+
+# Local agent settings
+.claude/settings.local.json
+
+# Local environment files
+.env.*
+!.env.example
+.direnv/
+
+# Misc
+.DS_Store
+*.log
+.env
+*.swp
+*.swo
+*~
+.idea/
