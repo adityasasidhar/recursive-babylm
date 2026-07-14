@@ -104,11 +104,11 @@ Table 2 reports final validation metrics after the full 500M-token budget; Table
 
 *Table 3: Validation loss (nats) at each retained checkpoint (uniform weighting; one epoch ≈170M tokens). Bold marks the best model at each checkpoint; † marks the 100M leader of each matched pair. Both recursive models trail their twins at 100M, lead by 200M, and the sampled pair gaps then widen monotonically.*
 
-![Training loss (left) and validation loss (right) versus training tokens for all five variants. Hue encodes the ablation pair (blue = 2:1, red = 3:1, green = baseline); solid lines are recursive models, dashed are their non-recursive twins.](figures/loss_curves.png)
+![Training loss (left) and validation loss (right) versus training tokens for all five variants. Hue encodes the ablation pair (blue = 2:1, red = 3:1, green = baseline); solid lines are recursive models, dashed are their non-recursive twins.](paper/figures/loss_curves.png)
 
 *Figure 1: Training loss (left, smoothed, from training logs) and checkpoint validation loss (right, uniform protocol). All runs are stable — zero loss spikes across 19,070 optimizer steps in total — and every model is still improving when the budget ends.*
 
-![Non-embedding parameters versus final validation loss. Vertical dotted lines connect the two parameter-matched pairs; filled markers are recursive models.](figures/params_vs_val.png)
+![Non-embedding parameters versus final validation loss. Vertical dotted lines connect the two parameter-matched pairs; filled markers are recursive models.](paper/figures/params_vs_val.png)
 
 *Figure 2: The parameter–quality trade-off. Recursion improves both parameter-matched pairs (Δ = 0.026 and 0.019 nats), and both recursive models beat every non-recursive model, including the larger pure-attention baseline.*
 
