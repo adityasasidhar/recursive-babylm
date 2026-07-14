@@ -25,10 +25,12 @@ fixed, per-variant sizes are whatever the structure gives — not force-matched.
 
 Recursive variants are a sequence of 2 independent super-blocks, each ONE
 ratio unit, each applied 3 times with weights tied within that super-block.
-The design yields **two exact param-matched recursion ablation pairs** (same
-params, recursion the only difference): `gdn_2to1` == `recursive_2to1` at
+The design yields **two exact learned-parameter-matched recursion pairs**:
+`gdn_2to1` == `recursive_2to1` at
 46.9M, and `gdn_3to1` == `recursive_3to1` at 63.5M. `baseline` (68.8M, pure
-GQA) sits alongside as the no-GDN reference. Each leaf folder is a
+GQA) sits alongside as the no-GDN reference. Within each pair, the recursive
+configuration also uses effective-depth residual scaling, so the comparison
+identifies the recursive configuration rather than tying alone. Each leaf folder is a
 self-contained variant (`model.py` + `config.py`) by design; only the
 attention/FFN primitives, tokenizer, data, and training loop are shared in
 `src/common/`.
@@ -41,7 +43,7 @@ src/common/    attention.py (GQA + fla GatedDeltaNet wrapper)  layers.py (SwiGLU
                blimp_eval.py (native-checkpoint causal BLiMP evaluation)
 src/<variant>/ model.py  config.py            (5 leaf folders, see table)
 notes/         design_decisions.md            (sizing math, fla citation, open items)
-paper/         paper.md (paper source)  figures/ (scripts + evaluation JSON)  latex/ (ACL-format main.tex → main.pdf)
+paper/         paper.md (paper source)  figures/ (scripts + evaluation/uncertainty JSON)  latex/ (ACL-format main.tex → main.pdf)
 ```
 
 `2to1`/`3to1` start with a digit, so they load via `importlib`
@@ -106,13 +108,15 @@ weighted eval batches unevenly across micro-batch settings; see paper
 Appendix A).
 
 `modal run modal_train.py::blimp_eval_all` evaluates all five final
-checkpoints on the official BabyLM 2026 full BLiMP and BLiMP-supplement sets
+checkpoints on the official BabyLM 2026 full BLiMP and BLiMP Supplement sets
 using the native models and causal summed-log-probability protocol. It writes
 the full per-paradigm artifact to `/checkpoints/analysis/blimp_eval.json`;
 the paper copy is `paper/figures/blimp_eval.json`.
 
-`--use-wandb` reads `WANDB_API_KEY` from the repo-root `.env` (gitignored) or
-your shell env and forwards it into the container. `--resume
+Copy `.env.example` to `.env` for the optional W&B settings. `--use-wandb`
+reads `WANDB_API_KEY` from the repo-root `.env` (gitignored) or your shell env
+and forwards it into the container. Figure regeneration also requires the full
+`WANDB_ENTITY_PROJECT=entity/project` path. `--resume
 /checkpoints/<run>/ckpt_00300M.pt` continues an interrupted run.
 
 ## Status
@@ -121,9 +125,10 @@ your shell env and forwards it into the container. `--resume
 - [x] Size report + smoke tests PASS (no NaNs, loss ↓ on all 5)
 - [x] Corpus pinned (`BabyLM-community/BabyLM-2026-Strict` + `BabyLM-dev`), recipe locked (500M tokens, LR 6e-4)
 - [x] All 5 runs finished on Modal H100s (2026-07-12) + uniform `ckpt_eval` re-evaluation
-- [x] Full official BLiMP + BLiMP-supplement evaluation (2026-07-14)
+- [x] Full official BLiMP + BLiMP Supplement evaluation (2026-07-14)
+- [x] Paired evaluation-sample bootstrap intervals for loss and BLiMP (2026-07-14)
 - [x] Paper written: `paper/paper.md` (source) → `paper/latex/main.pdf` (ACL format)
-- [ ] Remaining BabyLM evaluations (EWoK, COMPS, entity tracking, AoA, GLUE)
+- [ ] Remaining official Challenge evaluation (COMPS, entity tracking, GLUE, and fast checkpoint evaluation)
 
 **Final validation loss** (uniform per-token, 2M dev tokens): recursive 3:1
 **3.0926** < recursive 2:1 3.1072 < gdn 3:1 3.1121 < baseline 3.1244 <
@@ -139,5 +144,7 @@ gdn 2:1 3.1333 — recursion wins both param-matched pairs.
 | recursive 2:1 | 65.56 | 53.30 |
 | recursive 3:1 | 67.48 | 55.17 |
 
-Recursion improves both matched pairs on BLiMP (+3.31 and +4.21 points),
-while the larger pure-GQA baseline leads overall.
+Recursion improves both matched pairs on BLiMP (+3.31 and +4.21 points);
+paired 95% evaluation-sample intervals are [0.38, 6.85] and [2.43, 6.11].
+The larger pure-GQA baseline leads overall. These intervals do not estimate
+training-seed variance.

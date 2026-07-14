@@ -5,7 +5,7 @@
 6 runs x 100M tokens on the rented H100: the 3:1 recursion-ablation pair
 (gdn_3to1 = non-recursive competitor, recursive_3to1 = weight-tied twin)
 across peak LR {3e-4, 6e-4, 1e-3}. Selection metric: val loss at 100M tokens.
-Decision rule (locked with Aditya 2026-07-06): pick the largest LR where BOTH
+Decision rule (locked with the project owner 2026-07-06): pick the largest LR where BOTH
 variants are stable (no loss spikes / grad-norm blowups) and val loss is best
 or within noise; on disagreement take the LR that favors the NON-recursive
 model. Launching requires explicit sign-off.

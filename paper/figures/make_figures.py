@@ -2,8 +2,9 @@
 
     uv run --with matplotlib python paper/figures/make_figures.py
 
-Training-loss curves come from wandb (needs WANDB_API_KEY; source the repo
-.env). Validation numbers come from ckpt_eval.json next to this file — the
+Training-loss curves come from wandb (needs WANDB_API_KEY and the full
+``WANDB_ENTITY_PROJECT=entity/project`` path; source the repo .env).
+Validation numbers come from ckpt_eval.json next to this file — the
 uniformly-weighted per-checkpoint re-evaluation produced by
 `modal run modal_train.py::ckpt_eval` (the training-time val logger weighted
 batches unevenly across micro-batch settings; see paper Appendix A).
@@ -13,13 +14,13 @@ Outputs loss_curves.{png,pdf} and params_vs_val.{png,pdf}.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import wandb
 
 OUT = Path(__file__).parent
-ENTITY_PROJECT = "telikicherlaadityasasidhar-vellore-institute-of-technology/babylm-2026"
 TOKENS_PER_STEP = 131_072
 CKPTS = ["ckpt_00100M", "ckpt_00200M", "ckpt_00300M", "ckpt_00400M", "ckpt_00499M"]
 CKPT_TOKENS_M = [100, 200, 300, 400, 499.9]
@@ -55,12 +56,13 @@ def smooth(xs: list[float], w: int = 7) -> list[float]:
 
 
 def main() -> None:
+    entity_project = os.environ["WANDB_ENTITY_PROJECT"]
     ev = json.loads((OUT / "ckpt_eval.json").read_text())
     val = {n: [sum(ev[n][c]["chunk_losses"]) / len(ev[n][c]["chunk_losses"])
                for c in CKPTS] for n in ORDER}
 
     api = wandb.Api()
-    runs = {r.name: r for r in api.runs(ENTITY_PROJECT)}
+    runs = {r.name: r for r in api.runs(entity_project)}
     train_hist = {
         n: sorted((row["_step"], row["train/loss"]) for row in
                   runs[n].history(keys=["train/loss"], pandas=False))

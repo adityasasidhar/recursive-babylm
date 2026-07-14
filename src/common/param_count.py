@@ -44,7 +44,9 @@ def main() -> int:
 
     # The design produces two exact param-matched pairs for free: recursive
     # variants whose unique-layer composition equals a non-recursive variant's.
-    # Each isolates recursion (same params, only the recursive reuse differs).
+    # Each matches learned parameters and layer inventory. Recursive variants
+    # additionally use effective-depth residual initialization, so this is a
+    # comparison of the recursive configuration rather than tying alone.
     print("\nnatural param-matched pairs (recursion ablation, 0 param diff):")
     found = False
     for r_name in ("recursive_2to1", "recursive_3to1"):
@@ -52,7 +54,7 @@ def main() -> int:
             if counts[r_name] == counts[nr_name]:
                 print(
                     f"  {r_name} == {nr_name}  ({counts[r_name]:,} non-embed) — "
-                    "recursion is the only difference"
+                    "learned parameters match exactly"
                 )
                 found = True
     if not found:

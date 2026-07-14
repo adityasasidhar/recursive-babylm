@@ -260,7 +260,7 @@ def ckpt_eval(val_tokens: int = 2_000_000) -> dict:
               volumes={CKPT_DIR: ckpt_vol})
 def blimp_eval_all(batch_size: int = 64, limit_per_file: int = 0) -> dict:
     """Evaluate all five final checkpoints on the official 2026 full BLiMP
-    and BLiMP-supplement sets. ``limit_per_file`` is a smoke-test knob; zero
+    and BLiMP Supplement sets. ``limit_per_file`` is a smoke-test knob; zero
     evaluates every item. Results are persisted on the checkpoint volume."""
     import json
     from pathlib import Path

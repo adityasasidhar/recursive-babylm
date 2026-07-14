@@ -32,6 +32,9 @@ five variants.
   depth from 6 to 18 or from 8 to 24 without changing parameter count.
 - Residual-output initialization is scaled using effective depth because a tied
   projection writes to the residual stream on every recursive application.
+  This differs within each learned-parameter-matched pair, so the experiment
+  identifies the recursive configuration (tying plus depth-aware scaling), not
+  tying alone.
 
 ## Controlled training protocol
 
@@ -51,6 +54,9 @@ five variants.
 - `src/common/blimp_eval.py` evaluates native checkpoints with the official
   BabyLM 2026 causal BLiMP protocol. Evaluator, dataset, and tokenizer revisions
   are pinned in `paper/figures/blimp_eval.json`.
+- `paper/figures/paired_uncertainty.py` and its JSON artifact report paired
+  evaluation-sample bootstrap intervals over aligned validation windows and
+  BLiMP paradigms. They do not estimate training-seed variance.
 - The manuscript reports conclusions within the exact matched pairs separately
   from across-architecture rankings: recursion wins both pairs on validation
   loss and BLiMP, while the larger pure-GQA baseline leads BLiMP overall.

@@ -1,0 +1,111 @@
+{
+  "protocol": {
+    "method": "paired nonparametric percentile bootstrap of mean differences",
+    "confidence": 0.95,
+    "resamples": 100000,
+    "seed": 20260714,
+    "validation_unit": "aligned 4096-token window",
+    "blimp_unit": "aligned UID (paradigm/task)",
+    "validation_direction": "non-recursive loss minus recursive loss",
+    "blimp_direction": "recursive accuracy minus non-recursive accuracy",
+    "scope": "finite evaluation-sample uncertainty; excludes training-seed variance"
+  },
+  "validation_loss": {
+    "2to1": {
+      "units": 488,
+      "mean_difference": 0.02610977459016393,
+      "median_difference": 0.02503499999999992,
+      "ci_95_percentile": [
+        0.02478979303278688,
+        0.027446783811475417
+      ],
+      "sign_test": {
+        "positive": 480,
+        "negative": 8,
+        "ties": 0,
+        "p_two_sided": 1.9162458909709844e-130
+      }
+    },
+    "3to1": {
+      "units": 488,
+      "mean_difference": 0.019474098360655737,
+      "median_difference": 0.018805000000000183,
+      "ci_95_percentile": [
+        0.018273738729508184,
+        0.020685430840163926
+      ],
+      "sign_test": {
+        "positive": 462,
+        "negative": 26,
+        "ties": 0,
+        "p_two_sided": 2.64435227637374e-104
+      }
+    }
+  },
+  "grammatical_accuracy": {
+    "2to1": {
+      "blimp": {
+        "units": 67,
+        "mean_difference": 3.314131437870027,
+        "median_difference": 0.6376195536663118,
+        "ci_95_percentile": [
+          0.37795506515706245,
+          6.852622110880479
+        ],
+        "sign_test": {
+          "positive": 37,
+          "negative": 30,
+          "ties": 0,
+          "p_two_sided": 0.4638176178968696
+        }
+      },
+      "blimp_supplement": {
+        "units": 5,
+        "mean_difference": 1.0139513907806574,
+        "median_difference": -0.11876484560570333,
+        "ci_95_percentile": [
+          -0.7916101119782851,
+          3.4901201284761028
+        ],
+        "sign_test": {
+          "positive": 2,
+          "negative": 3,
+          "ties": 0,
+          "p_two_sided": 1.0
+        }
+      }
+    },
+    "3to1": {
+      "blimp": {
+        "units": 67,
+        "mean_difference": 4.208790974529554,
+        "median_difference": 2.6184538653366616,
+        "ci_95_percentile": [
+          2.42827051983146,
+          6.106839971312298
+        ],
+        "sign_test": {
+          "positive": 46,
+          "negative": 20,
+          "ties": 1,
+          "p_two_sided": 0.0018582303075658085
+        }
+      },
+      "blimp_supplement": {
+        "units": 5,
+        "mean_difference": 1.239124155800922,
+        "median_difference": -1.0688836104513015,
+        "ci_95_percentile": [
+          -2.814468472801404,
+          6.129037241527547
+        ],
+        "sign_test": {
+          "positive": 2,
+          "negative": 3,
+          "ties": 0,
+          "p_two_sided": 1.0
+        }
+      }
+    }
+  }
+}

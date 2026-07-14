@@ -3,8 +3,9 @@
 d_ff = 3x d_model (2304); depth is the sizing knob. 6 layers (4 GDN + 2 GQA)
 lands 46.9M non-embedding — EXACTLY matching recursive_2to1, which has the
 same 6-layer composition (2 super-blocks x one ratio unit). This makes the
-non-recursive/recursive 2:1 pair a clean recursion ablation (same params,
-recursion is the only difference), mirroring gdn_3to1 == recursive_3to1.
+non-recursive/recursive 2:1 pair a learned-parameter-matched comparison,
+mirroring gdn_3to1 == recursive_3to1. The recursive configuration separately
+uses effective-depth residual initialization.
 Verified by src/common/param_count.py.
 """
 
