@@ -1,0 +1,1903 @@
+{
+  "protocol": {
+    "name": "BabyLM 2026 Strict causal zero-shot COMPS + entity tracking",
+    "scoring": "summed log-probability of the completion tokens only",
+    "aggregation": "COMPS: macro-average over the four subsets. Entity tracking: mean over per-numops UIDs within each of regular/ambiref/move_contents, then mean of the three splits.",
+    "temperature": 1.0,
+    "skipped": "entity-tracking rows where any option contains 'nothing'",
+    "ties": "resolved as incorrect (the official runner samples uniformly)",
+    "eval_repo": "https://github.com/babylm-org/babylm-eval",
+    "eval_commit": "3d57ddc8c40ee795c0b5e41b3a20251a9457a593",
+    "data_repo": "BabyLM-community/BabyLM-2026-Strict-Evals",
+    "data_revision": "8d52da9424a9ff30b9e8266c4f751aba9c504233",
+    "tokenizer": "BabyLM-community/babylm-baseline-100m-gpt-bert-masked-focus",
+    "tokenizer_revision": "6660c0417342d99cd989e30c40f56e6e712d2a6b"
+  },
+  "models": {
+    "baseline": {
+      "variant": "baseline",
+      "checkpoint": "/checkpoints/baseline/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50733,
+          "micro_accuracy": 55.733400711868875,
+          "macro_accuracy": 53.75456967491906,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 29030,
+                "total": 49340,
+                "accuracy": 58.83664369679773
+              },
+              "wugs": {
+                "correct": 7862,
+                "total": 13896,
+                "accuracy": 56.577432354634425
+              },
+              "wugs_dist_before": {
+                "correct": 6781,
+                "total": 13896,
+                "accuracy": 48.79821531375936
+              },
+              "wugs_dist_in_between": {
+                "correct": 7060,
+                "total": 13896,
+                "accuracy": 50.80598733448474
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1290,
+          "micro_accuracy": 19.02654867256637,
+          "macro_accuracy": 19.11370398198605,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 96,
+                "total": 508,
+                "accuracy": 18.89763779527559
+              },
+              "ambiref_1_ops": {
+                "correct": 65,
+                "total": 428,
+                "accuracy": 15.186915887850468
+              },
+              "ambiref_2_ops": {
+                "correct": 79,
+                "total": 413,
+                "accuracy": 19.128329297820823
+              },
+              "ambiref_3_ops": {
+                "correct": 65,
+                "total": 409,
+                "accuracy": 15.89242053789731
+              },
+              "ambiref_4_ops": {
+                "correct": 85,
+                "total": 434,
+                "accuracy": 19.5852534562212
+              },
+              "ambiref_5_ops": {
+                "correct": 26,
+                "total": 123,
+                "accuracy": 21.13821138211382
+              },
+              "move_contents_0_ops": {
+                "correct": 140,
+                "total": 516,
+                "accuracy": 27.131782945736433
+              },
+              "move_contents_1_ops": {
+                "correct": 66,
+                "total": 437,
+                "accuracy": 15.102974828375286
+              },
+              "move_contents_2_ops": {
+                "correct": 69,
+                "total": 399,
+                "accuracy": 17.293233082706767
+              },
+              "move_contents_3_ops": {
+                "correct": 75,
+                "total": 406,
+                "accuracy": 18.472906403940886
+              },
+              "move_contents_4_ops": {
+                "correct": 55,
+                "total": 353,
+                "accuracy": 15.580736543909348
+              },
+              "move_contents_5_ops": {
+                "correct": 26,
+                "total": 116,
+                "accuracy": 22.413793103448278
+              },
+              "regular_0_ops": {
+                "correct": 150,
+                "total": 517,
+                "accuracy": 29.013539651837526
+              },
+              "regular_1_ops": {
+                "correct": 66,
+                "total": 409,
+                "accuracy": 16.13691931540342
+              },
+              "regular_2_ops": {
+                "correct": 71,
+                "total": 405,
+                "accuracy": 17.530864197530864
+              },
+              "regular_3_ops": {
+                "correct": 71,
+                "total": 425,
+                "accuracy": 16.705882352941178
+              },
+              "regular_4_ops": {
+                "correct": 64,
+                "total": 388,
+                "accuracy": 16.49484536082474
+              },
+              "regular_5_ops": {
+                "correct": 21,
+                "total": 94,
+                "accuracy": 22.340425531914892
+              }
+            },
+            "split": {
+              "regular": 19.70374606840877,
+              "ambiref": 18.304794726196537,
+              "move_contents": 19.332571151352834
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "baseline",
+      "limit_per_file": null
+    },
+    "gdn_2to1": {
+      "variant": "gdn_2to1",
+      "checkpoint": "/checkpoints/gdn_2to1/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50045,
+          "micro_accuracy": 54.97758931317836,
+          "macro_accuracy": 53.866059183291995,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 27986,
+                "total": 49340,
+                "accuracy": 56.7207134171058
+              },
+              "wugs": {
+                "correct": 8098,
+                "total": 13896,
+                "accuracy": 58.27576280944157
+              },
+              "wugs_dist_before": {
+                "correct": 7518,
+                "total": 13896,
+                "accuracy": 54.10189982728843
+              },
+              "wugs_dist_in_between": {
+                "correct": 6443,
+                "total": 13896,
+                "accuracy": 46.36586067933218
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1207,
+          "micro_accuracy": 17.8023598820059,
+          "macro_accuracy": 17.86153429951126,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 111,
+                "total": 508,
+                "accuracy": 21.8503937007874
+              },
+              "ambiref_1_ops": {
+                "correct": 77,
+                "total": 428,
+                "accuracy": 17.990654205607477
+              },
+              "ambiref_2_ops": {
+                "correct": 72,
+                "total": 413,
+                "accuracy": 17.433414043583536
+              },
+              "ambiref_3_ops": {
+                "correct": 68,
+                "total": 409,
+                "accuracy": 16.625916870415647
+              },
+              "ambiref_4_ops": {
+                "correct": 80,
+                "total": 434,
+                "accuracy": 18.433179723502302
+              },
+              "ambiref_5_ops": {
+                "correct": 27,
+                "total": 123,
+                "accuracy": 21.951219512195124
+              },
+              "move_contents_0_ops": {
+                "correct": 142,
+                "total": 516,
+                "accuracy": 27.51937984496124
+              },
+              "move_contents_1_ops": {
+                "correct": 55,
+                "total": 437,
+                "accuracy": 12.585812356979405
+              },
+              "move_contents_2_ops": {
+                "correct": 58,
+                "total": 399,
+                "accuracy": 14.536340852130326
+              },
+              "move_contents_3_ops": {
+                "correct": 79,
+                "total": 406,
+                "accuracy": 19.458128078817733
+              },
+              "move_contents_4_ops": {
+                "correct": 40,
+                "total": 353,
+                "accuracy": 11.331444759206798
+              },
+              "move_contents_5_ops": {
+                "correct": 15,
+                "total": 116,
+                "accuracy": 12.931034482758621
+              },
+              "regular_0_ops": {
+                "correct": 110,
+                "total": 517,
+                "accuracy": 21.27659574468085
+              },
+              "regular_1_ops": {
+                "correct": 57,
+                "total": 409,
+                "accuracy": 13.93643031784841
+              },
+              "regular_2_ops": {
+                "correct": 60,
+                "total": 405,
+                "accuracy": 14.814814814814815
+              },
+              "regular_3_ops": {
+                "correct": 68,
+                "total": 425,
+                "accuracy": 16.0
+              },
+              "regular_4_ops": {
+                "correct": 63,
+                "total": 388,
+                "accuracy": 16.237113402061855
+              },
+              "regular_5_ops": {
+                "correct": 25,
+                "total": 94,
+                "accuracy": 26.595744680851062
+              }
+            },
+            "split": {
+              "regular": 18.1434498267095,
+              "ambiref": 19.047463009348583,
+              "move_contents": 16.393690062475688
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "gdn_2to1",
+      "limit_per_file": null
+    },
+    "recursive_2to1": {
+      "variant": "recursive_2to1",
+      "checkpoint": "/checkpoints/recursive_2to1/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 49421,
+          "micro_accuracy": 54.29208595157534,
+          "macro_accuracy": 53.5046520227043,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 27397,
+                "total": 49340,
+                "accuracy": 55.526955816781516
+              },
+              "wugs": {
+                "correct": 8207,
+                "total": 13896,
+                "accuracy": 59.0601611974669
+              },
+              "wugs_dist_before": {
+                "correct": 9561,
+                "total": 13896,
+                "accuracy": 68.80397236614853
+              },
+              "wugs_dist_in_between": {
+                "correct": 4256,
+                "total": 13896,
+                "accuracy": 30.627518710420265
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1288,
+          "micro_accuracy": 18.997050147492626,
+          "macro_accuracy": 18.398539649744624,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 113,
+                "total": 508,
+                "accuracy": 22.244094488188978
+              },
+              "ambiref_1_ops": {
+                "correct": 61,
+                "total": 428,
+                "accuracy": 14.25233644859813
+              },
+              "ambiref_2_ops": {
+                "correct": 79,
+                "total": 413,
+                "accuracy": 19.128329297820823
+              },
+              "ambiref_3_ops": {
+                "correct": 68,
+                "total": 409,
+                "accuracy": 16.625916870415647
+              },
+              "ambiref_4_ops": {
+                "correct": 114,
+                "total": 434,
+                "accuracy": 26.267281105990783
+              },
+              "ambiref_5_ops": {
+                "correct": 26,
+                "total": 123,
+                "accuracy": 21.13821138211382
+              },
+              "move_contents_0_ops": {
+                "correct": 159,
+                "total": 516,
+                "accuracy": 30.813953488372093
+              },
+              "move_contents_1_ops": {
+                "correct": 69,
+                "total": 437,
+                "accuracy": 15.789473684210526
+              },
+              "move_contents_2_ops": {
+                "correct": 57,
+                "total": 399,
+                "accuracy": 14.285714285714286
+              },
+              "move_contents_3_ops": {
+                "correct": 73,
+                "total": 406,
+                "accuracy": 17.980295566502463
+              },
+              "move_contents_4_ops": {
+                "correct": 45,
+                "total": 353,
+                "accuracy": 12.747875354107649
+              },
+              "move_contents_5_ops": {
+                "correct": 16,
+                "total": 116,
+                "accuracy": 13.793103448275861
+              },
+              "regular_0_ops": {
+                "correct": 138,
+                "total": 517,
+                "accuracy": 26.692456479690524
+              },
+              "regular_1_ops": {
+                "correct": 49,
+                "total": 409,
+                "accuracy": 11.98044009779951
+              },
+              "regular_2_ops": {
+                "correct": 87,
+                "total": 405,
+                "accuracy": 21.48148148148148
+              },
+              "regular_3_ops": {
+                "correct": 66,
+                "total": 425,
+                "accuracy": 15.529411764705882
+              },
+              "regular_4_ops": {
+                "correct": 52,
+                "total": 388,
+                "accuracy": 13.402061855670103
+              },
+              "regular_5_ops": {
+                "correct": 16,
+                "total": 94,
+                "accuracy": 17.02127659574468
+              }
+            },
+            "split": {
+              "regular": 17.68452137918203,
+              "ambiref": 19.94269493218803,
+              "move_contents": 17.568402637863812
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "recursive_2to1",
+      "limit_per_file": null
+    },
+    "gdn_3to1": {
+      "variant": "gdn_3to1",
+      "checkpoint": "/checkpoints/gdn_3to1/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50463,
+          "micro_accuracy": 55.43678868040603,
+          "macro_accuracy": 53.95895495264025,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28496,
+                "total": 49340,
+                "accuracy": 57.75435751925416
+              },
+              "wugs": {
+                "correct": 8210,
+                "total": 13896,
+                "accuracy": 59.08175014392631
+              },
+              "wugs_dist_before": {
+                "correct": 8277,
+                "total": 13896,
+                "accuracy": 59.56390328151986
+              },
+              "wugs_dist_in_between": {
+                "correct": 5480,
+                "total": 13896,
+                "accuracy": 39.43580886586068
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1167,
+          "micro_accuracy": 17.212389380530972,
+          "macro_accuracy": 16.986382469613705,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 117,
+                "total": 508,
+                "accuracy": 23.031496062992126
+              },
+              "ambiref_1_ops": {
+                "correct": 56,
+                "total": 428,
+                "accuracy": 13.08411214953271
+              },
+              "ambiref_2_ops": {
+                "correct": 75,
+                "total": 413,
+                "accuracy": 18.159806295399516
+              },
+              "ambiref_3_ops": {
+                "correct": 60,
+                "total": 409,
+                "accuracy": 14.669926650366747
+              },
+              "ambiref_4_ops": {
+                "correct": 87,
+                "total": 434,
+                "accuracy": 20.046082949308754
+              },
+              "ambiref_5_ops": {
+                "correct": 31,
+                "total": 123,
+                "accuracy": 25.203252032520325
+              },
+              "move_contents_0_ops": {
+                "correct": 145,
+                "total": 516,
+                "accuracy": 28.100775193798448
+              },
+              "move_contents_1_ops": {
+                "correct": 52,
+                "total": 437,
+                "accuracy": 11.899313501144166
+              },
+              "move_contents_2_ops": {
+                "correct": 68,
+                "total": 399,
+                "accuracy": 17.04260651629073
+              },
+              "move_contents_3_ops": {
+                "correct": 61,
+                "total": 406,
+                "accuracy": 15.024630541871922
+              },
+              "move_contents_4_ops": {
+                "correct": 28,
+                "total": 353,
+                "accuracy": 7.932011331444759
+              },
+              "move_contents_5_ops": {
+                "correct": 12,
+                "total": 116,
+                "accuracy": 10.344827586206897
+              },
+              "regular_0_ops": {
+                "correct": 125,
+                "total": 517,
+                "accuracy": 24.177949709864603
+              },
+              "regular_1_ops": {
+                "correct": 53,
+                "total": 409,
+                "accuracy": 12.95843520782396
+              },
+              "regular_2_ops": {
+                "correct": 53,
+                "total": 405,
+                "accuracy": 13.08641975308642
+              },
+              "regular_3_ops": {
+                "correct": 64,
+                "total": 425,
+                "accuracy": 15.058823529411764
+              },
+              "regular_4_ops": {
+                "correct": 61,
+                "total": 388,
+                "accuracy": 15.721649484536082
+              },
+              "regular_5_ops": {
+                "correct": 19,
+                "total": 94,
+                "accuracy": 20.21276595744681
+              }
+            },
+            "split": {
+              "regular": 16.869340607028274,
+              "ambiref": 19.032446023353362,
+              "move_contents": 15.057360778459483
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "gdn_3to1",
+      "limit_per_file": null
+    },
+    "recursive_3to1": {
+      "variant": "recursive_3to1",
+      "checkpoint": "/checkpoints/recursive_3to1/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50206,
+          "micro_accuracy": 55.15445796897658,
+          "macro_accuracy": 54.10013808641366,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28029,
+                "total": 49340,
+                "accuracy": 56.80786380218889
+              },
+              "wugs": {
+                "correct": 8152,
+                "total": 13896,
+                "accuracy": 58.664363845710994
+              },
+              "wugs_dist_before": {
+                "correct": 10015,
+                "total": 13896,
+                "accuracy": 72.07109959700634
+              },
+              "wugs_dist_in_between": {
+                "correct": 4010,
+                "total": 13896,
+                "accuracy": 28.857225100748416
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1220,
+          "micro_accuracy": 17.99410029498525,
+          "macro_accuracy": 16.894237918830996,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 109,
+                "total": 508,
+                "accuracy": 21.456692913385826
+              },
+              "ambiref_1_ops": {
+                "correct": 64,
+                "total": 428,
+                "accuracy": 14.953271028037383
+              },
+              "ambiref_2_ops": {
+                "correct": 65,
+                "total": 413,
+                "accuracy": 15.738498789346247
+              },
+              "ambiref_3_ops": {
+                "correct": 60,
+                "total": 409,
+                "accuracy": 14.669926650366747
+              },
+              "ambiref_4_ops": {
+                "correct": 83,
+                "total": 434,
+                "accuracy": 19.12442396313364
+              },
+              "ambiref_5_ops": {
+                "correct": 20,
+                "total": 123,
+                "accuracy": 16.260162601626018
+              },
+              "move_contents_0_ops": {
+                "correct": 188,
+                "total": 516,
+                "accuracy": 36.434108527131784
+              },
+              "move_contents_1_ops": {
+                "correct": 59,
+                "total": 437,
+                "accuracy": 13.501144164759726
+              },
+              "move_contents_2_ops": {
+                "correct": 47,
+                "total": 399,
+                "accuracy": 11.779448621553884
+              },
+              "move_contents_3_ops": {
+                "correct": 57,
+                "total": 406,
+                "accuracy": 14.039408866995075
+              },
+              "move_contents_4_ops": {
+                "correct": 32,
+                "total": 353,
+                "accuracy": 9.06515580736544
+              },
+              "move_contents_5_ops": {
+                "correct": 8,
+                "total": 116,
+                "accuracy": 6.896551724137931
+              },
+              "regular_0_ops": {
+                "correct": 171,
+                "total": 517,
+                "accuracy": 33.07543520309478
+              },
+              "regular_1_ops": {
+                "correct": 67,
+                "total": 409,
+                "accuracy": 16.381418092909534
+              },
+              "regular_2_ops": {
+                "correct": 56,
+                "total": 405,
+                "accuracy": 13.82716049382716
+              },
+              "regular_3_ops": {
+                "correct": 60,
+                "total": 425,
+                "accuracy": 14.117647058823529
+              },
+              "regular_4_ops": {
+                "correct": 57,
+                "total": 388,
+                "accuracy": 14.690721649484535
+              },
+              "regular_5_ops": {
+                "correct": 17,
+                "total": 94,
+                "accuracy": 18.085106382978722
+              }
+            },
+            "split": {
+              "regular": 18.36291481351971,
+              "ambiref": 17.033829324315978,
+              "move_contents": 15.285969618657306
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "recursive_3to1",
+      "limit_per_file": null
+    },
+    "gdn_2to1_seed43": {
+      "variant": "gdn_2to1",
+      "checkpoint": "/checkpoints/gdn_2to1_seed43/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50605,
+          "micro_accuracy": 55.592784637693896,
+          "macro_accuracy": 54.51555115900643,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28263,
+                "total": 49340,
+                "accuracy": 57.282124037292256
+              },
+              "wugs": {
+                "correct": 8475,
+                "total": 13896,
+                "accuracy": 60.98877374784111
+              },
+              "wugs_dist_before": {
+                "correct": 7734,
+                "total": 13896,
+                "accuracy": 55.656303972366146
+              },
+              "wugs_dist_in_between": {
+                "correct": 6133,
+                "total": 13896,
+                "accuracy": 44.135002878526194
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1278,
+          "micro_accuracy": 18.849557522123895,
+          "macro_accuracy": 18.85822329008993,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 119,
+                "total": 508,
+                "accuracy": 23.4251968503937
+              },
+              "ambiref_1_ops": {
+                "correct": 67,
+                "total": 428,
+                "accuracy": 15.654205607476635
+              },
+              "ambiref_2_ops": {
+                "correct": 72,
+                "total": 413,
+                "accuracy": 17.433414043583536
+              },
+              "ambiref_3_ops": {
+                "correct": 67,
+                "total": 409,
+                "accuracy": 16.381418092909534
+              },
+              "ambiref_4_ops": {
+                "correct": 83,
+                "total": 434,
+                "accuracy": 19.12442396313364
+              },
+              "ambiref_5_ops": {
+                "correct": 21,
+                "total": 123,
+                "accuracy": 17.073170731707318
+              },
+              "move_contents_0_ops": {
+                "correct": 132,
+                "total": 516,
+                "accuracy": 25.58139534883721
+              },
+              "move_contents_1_ops": {
+                "correct": 65,
+                "total": 437,
+                "accuracy": 14.874141876430206
+              },
+              "move_contents_2_ops": {
+                "correct": 69,
+                "total": 399,
+                "accuracy": 17.293233082706767
+              },
+              "move_contents_3_ops": {
+                "correct": 87,
+                "total": 406,
+                "accuracy": 21.428571428571427
+              },
+              "move_contents_4_ops": {
+                "correct": 58,
+                "total": 353,
+                "accuracy": 16.430594900849858
+              },
+              "move_contents_5_ops": {
+                "correct": 21,
+                "total": 116,
+                "accuracy": 18.103448275862068
+              },
+              "regular_0_ops": {
+                "correct": 117,
+                "total": 517,
+                "accuracy": 22.63056092843327
+              },
+              "regular_1_ops": {
+                "correct": 69,
+                "total": 409,
+                "accuracy": 16.87041564792176
+              },
+              "regular_2_ops": {
+                "correct": 61,
+                "total": 405,
+                "accuracy": 15.061728395061728
+              },
+              "regular_3_ops": {
+                "correct": 84,
+                "total": 425,
+                "accuracy": 19.764705882352942
+              },
+              "regular_4_ops": {
+                "correct": 61,
+                "total": 388,
+                "accuracy": 15.721649484536082
+              },
+              "regular_5_ops": {
+                "correct": 25,
+                "total": 94,
+                "accuracy": 26.595744680851062
+              }
+            },
+            "split": {
+              "regular": 19.44080083652614,
+              "ambiref": 18.18197154820073,
+              "move_contents": 18.951897485542922
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "gdn_2to1_seed43",
+      "limit_per_file": null
+    },
+    "recursive_2to1_seed43": {
+      "variant": "recursive_2to1",
+      "checkpoint": "/checkpoints/recursive_2to1_seed43/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 49857,
+          "micro_accuracy": 54.771059454233864,
+          "macro_accuracy": 53.910379968958125,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 27690,
+                "total": 49340,
+                "accuracy": 56.12079448723146
+              },
+              "wugs": {
+                "correct": 8218,
+                "total": 13896,
+                "accuracy": 59.139320667818076
+              },
+              "wugs_dist_before": {
+                "correct": 8913,
+                "total": 13896,
+                "accuracy": 64.14075993091537
+              },
+              "wugs_dist_in_between": {
+                "correct": 5036,
+                "total": 13896,
+                "accuracy": 36.24064478986759
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1274,
+          "micro_accuracy": 18.790560471976402,
+          "macro_accuracy": 17.614721801159828,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 136,
+                "total": 508,
+                "accuracy": 26.771653543307085
+              },
+              "ambiref_1_ops": {
+                "correct": 78,
+                "total": 428,
+                "accuracy": 18.22429906542056
+              },
+              "ambiref_2_ops": {
+                "correct": 59,
+                "total": 413,
+                "accuracy": 14.285714285714286
+              },
+              "ambiref_3_ops": {
+                "correct": 78,
+                "total": 409,
+                "accuracy": 19.070904645476773
+              },
+              "ambiref_4_ops": {
+                "correct": 85,
+                "total": 434,
+                "accuracy": 19.5852534562212
+              },
+              "ambiref_5_ops": {
+                "correct": 15,
+                "total": 123,
+                "accuracy": 12.195121951219512
+              },
+              "move_contents_0_ops": {
+                "correct": 185,
+                "total": 516,
+                "accuracy": 35.85271317829457
+              },
+              "move_contents_1_ops": {
+                "correct": 79,
+                "total": 437,
+                "accuracy": 18.07780320366133
+              },
+              "move_contents_2_ops": {
+                "correct": 38,
+                "total": 399,
+                "accuracy": 9.523809523809524
+              },
+              "move_contents_3_ops": {
+                "correct": 66,
+                "total": 406,
+                "accuracy": 16.25615763546798
+              },
+              "move_contents_4_ops": {
+                "correct": 35,
+                "total": 353,
+                "accuracy": 9.91501416430595
+              },
+              "move_contents_5_ops": {
+                "correct": 10,
+                "total": 116,
+                "accuracy": 8.620689655172415
+              },
+              "regular_0_ops": {
+                "correct": 159,
+                "total": 517,
+                "accuracy": 30.754352030947775
+              },
+              "regular_1_ops": {
+                "correct": 65,
+                "total": 409,
+                "accuracy": 15.89242053789731
+              },
+              "regular_2_ops": {
+                "correct": 52,
+                "total": 405,
+                "accuracy": 12.839506172839506
+              },
+              "regular_3_ops": {
+                "correct": 65,
+                "total": 425,
+                "accuracy": 15.294117647058824
+              },
+              "regular_4_ops": {
+                "correct": 49,
+                "total": 388,
+                "accuracy": 12.628865979381443
+              },
+              "regular_5_ops": {
+                "correct": 20,
+                "total": 94,
+                "accuracy": 21.27659574468085
+              }
+            },
+            "split": {
+              "regular": 18.114309685467617,
+              "ambiref": 18.355491157893237,
+              "move_contents": 16.374364560118625
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "recursive_2to1_seed43",
+      "limit_per_file": null
+    },
+    "gdn_3to1_seed43": {
+      "variant": "gdn_3to1",
+      "checkpoint": "/checkpoints/gdn_3to1_seed43/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 51270,
+          "micro_accuracy": 56.32332908555609,
+          "macro_accuracy": 54.6676870149415,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 29071,
+                "total": 49340,
+                "accuracy": 58.91974057559789
+              },
+              "wugs": {
+                "correct": 8299,
+                "total": 13896,
+                "accuracy": 59.72222222222222
+              },
+              "wugs_dist_before": {
+                "correct": 8538,
+                "total": 13896,
+                "accuracy": 61.44214162348877
+              },
+              "wugs_dist_in_between": {
+                "correct": 5362,
+                "total": 13896,
+                "accuracy": 38.58664363845711
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1241,
+          "micro_accuracy": 18.303834808259587,
+          "macro_accuracy": 18.564721946679533,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 108,
+                "total": 508,
+                "accuracy": 21.25984251968504
+              },
+              "ambiref_1_ops": {
+                "correct": 60,
+                "total": 428,
+                "accuracy": 14.018691588785046
+              },
+              "ambiref_2_ops": {
+                "correct": 86,
+                "total": 413,
+                "accuracy": 20.82324455205811
+              },
+              "ambiref_3_ops": {
+                "correct": 80,
+                "total": 409,
+                "accuracy": 19.559902200489
+              },
+              "ambiref_4_ops": {
+                "correct": 80,
+                "total": 434,
+                "accuracy": 18.433179723502302
+              },
+              "ambiref_5_ops": {
+                "correct": 30,
+                "total": 123,
+                "accuracy": 24.390243902439025
+              },
+              "move_contents_0_ops": {
+                "correct": 123,
+                "total": 516,
+                "accuracy": 23.837209302325583
+              },
+              "move_contents_1_ops": {
+                "correct": 71,
+                "total": 437,
+                "accuracy": 16.247139588100687
+              },
+              "move_contents_2_ops": {
+                "correct": 55,
+                "total": 399,
+                "accuracy": 13.784461152882205
+              },
+              "move_contents_3_ops": {
+                "correct": 75,
+                "total": 406,
+                "accuracy": 18.472906403940886
+              },
+              "move_contents_4_ops": {
+                "correct": 41,
+                "total": 353,
+                "accuracy": 11.614730878186968
+              },
+              "move_contents_5_ops": {
+                "correct": 12,
+                "total": 116,
+                "accuracy": 10.344827586206897
+              },
+              "regular_0_ops": {
+                "correct": 124,
+                "total": 517,
+                "accuracy": 23.984526112185687
+              },
+              "regular_1_ops": {
+                "correct": 65,
+                "total": 409,
+                "accuracy": 15.89242053789731
+              },
+              "regular_2_ops": {
+                "correct": 66,
+                "total": 405,
+                "accuracy": 16.296296296296298
+              },
+              "regular_3_ops": {
+                "correct": 67,
+                "total": 425,
+                "accuracy": 15.764705882352942
+              },
+              "regular_4_ops": {
+                "correct": 68,
+                "total": 388,
+                "accuracy": 17.52577319587629
+              },
+              "regular_5_ops": {
+                "correct": 30,
+                "total": 94,
+                "accuracy": 31.914893617021278
+              }
+            },
+            "split": {
+              "regular": 20.22976927360497,
+              "ambiref": 19.74751741449309,
+              "move_contents": 15.716879151940537
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "gdn_3to1_seed43",
+      "limit_per_file": null
+    },
+    "recursive_3to1_seed43": {
+      "variant": "recursive_3to1",
+      "checkpoint": "/checkpoints/recursive_3to1_seed43/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50764,
+          "micro_accuracy": 55.76745616733313,
+          "macro_accuracy": 54.64134826689854,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28387,
+                "total": 49340,
+                "accuracy": 57.53344142683421
+              },
+              "wugs": {
+                "correct": 8373,
+                "total": 13896,
+                "accuracy": 60.25474956822107
+              },
+              "wugs_dist_before": {
+                "correct": 8036,
+                "total": 13896,
+                "accuracy": 57.82959124928037
+              },
+              "wugs_dist_in_between": {
+                "correct": 5968,
+                "total": 13896,
+                "accuracy": 42.94761082325849
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1240,
+          "micro_accuracy": 18.289085545722713,
+          "macro_accuracy": 17.918501810421322,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 117,
+                "total": 508,
+                "accuracy": 23.031496062992126
+              },
+              "ambiref_1_ops": {
+                "correct": 56,
+                "total": 428,
+                "accuracy": 13.08411214953271
+              },
+              "ambiref_2_ops": {
+                "correct": 69,
+                "total": 413,
+                "accuracy": 16.707021791767556
+              },
+              "ambiref_3_ops": {
+                "correct": 78,
+                "total": 409,
+                "accuracy": 19.070904645476773
+              },
+              "ambiref_4_ops": {
+                "correct": 95,
+                "total": 434,
+                "accuracy": 21.889400921658986
+              },
+              "ambiref_5_ops": {
+                "correct": 21,
+                "total": 123,
+                "accuracy": 17.073170731707318
+              },
+              "move_contents_0_ops": {
+                "correct": 174,
+                "total": 516,
+                "accuracy": 33.72093023255814
+              },
+              "move_contents_1_ops": {
+                "correct": 73,
+                "total": 437,
+                "accuracy": 16.704805491990847
+              },
+              "move_contents_2_ops": {
+                "correct": 55,
+                "total": 399,
+                "accuracy": 13.784461152882205
+              },
+              "move_contents_3_ops": {
+                "correct": 46,
+                "total": 406,
+                "accuracy": 11.330049261083744
+              },
+              "move_contents_4_ops": {
+                "correct": 41,
+                "total": 353,
+                "accuracy": 11.614730878186968
+              },
+              "move_contents_5_ops": {
+                "correct": 22,
+                "total": 116,
+                "accuracy": 18.96551724137931
+              },
+              "regular_0_ops": {
+                "correct": 142,
+                "total": 517,
+                "accuracy": 27.46615087040619
+              },
+              "regular_1_ops": {
+                "correct": 55,
+                "total": 409,
+                "accuracy": 13.447432762836186
+              },
+              "regular_2_ops": {
+                "correct": 62,
+                "total": 405,
+                "accuracy": 15.308641975308642
+              },
+              "regular_3_ops": {
+                "correct": 59,
+                "total": 425,
+                "accuracy": 13.882352941176471
+              },
+              "regular_4_ops": {
+                "correct": 55,
+                "total": 388,
+                "accuracy": 14.175257731958762
+              },
+              "regular_5_ops": {
+                "correct": 20,
+                "total": 94,
+                "accuracy": 21.27659574468085
+              }
+            },
+            "split": {
+              "regular": 17.59273867106118,
+              "ambiref": 18.476017717189247,
+              "move_contents": 17.686749043013535
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "recursive_3to1_seed43",
+      "limit_per_file": null
+    },
+    "gdn_2to1_seed44": {
+      "variant": "gdn_2to1",
+      "checkpoint": "/checkpoints/gdn_2to1_seed44/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50583,
+          "micro_accuracy": 55.56861624994507,
+          "macro_accuracy": 54.063698826816804,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28582,
+                "total": 49340,
+                "accuracy": 57.92865828942035
+              },
+              "wugs": {
+                "correct": 8156,
+                "total": 13896,
+                "accuracy": 58.69314910765688
+              },
+              "wugs_dist_before": {
+                "correct": 7160,
+                "total": 13896,
+                "accuracy": 51.525618883131834
+              },
+              "wugs_dist_in_between": {
+                "correct": 6685,
+                "total": 13896,
+                "accuracy": 48.10736902705815
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1294,
+          "micro_accuracy": 19.085545722713864,
+          "macro_accuracy": 19.038261980966297,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 98,
+                "total": 508,
+                "accuracy": 19.291338582677167
+              },
+              "ambiref_1_ops": {
+                "correct": 71,
+                "total": 428,
+                "accuracy": 16.588785046728972
+              },
+              "ambiref_2_ops": {
+                "correct": 73,
+                "total": 413,
+                "accuracy": 17.675544794188863
+              },
+              "ambiref_3_ops": {
+                "correct": 79,
+                "total": 409,
+                "accuracy": 19.315403422982886
+              },
+              "ambiref_4_ops": {
+                "correct": 102,
+                "total": 434,
+                "accuracy": 23.502304147465438
+              },
+              "ambiref_5_ops": {
+                "correct": 27,
+                "total": 123,
+                "accuracy": 21.951219512195124
+              },
+              "move_contents_0_ops": {
+                "correct": 130,
+                "total": 516,
+                "accuracy": 25.1937984496124
+              },
+              "move_contents_1_ops": {
+                "correct": 65,
+                "total": 437,
+                "accuracy": 14.874141876430206
+              },
+              "move_contents_2_ops": {
+                "correct": 71,
+                "total": 399,
+                "accuracy": 17.794486215538846
+              },
+              "move_contents_3_ops": {
+                "correct": 76,
+                "total": 406,
+                "accuracy": 18.7192118226601
+              },
+              "move_contents_4_ops": {
+                "correct": 56,
+                "total": 353,
+                "accuracy": 15.864022662889518
+              },
+              "move_contents_5_ops": {
+                "correct": 16,
+                "total": 116,
+                "accuracy": 13.793103448275861
+              },
+              "regular_0_ops": {
+                "correct": 124,
+                "total": 517,
+                "accuracy": 23.984526112185687
+              },
+              "regular_1_ops": {
+                "correct": 63,
+                "total": 409,
+                "accuracy": 15.403422982885086
+              },
+              "regular_2_ops": {
+                "correct": 63,
+                "total": 405,
+                "accuracy": 15.555555555555555
+              },
+              "regular_3_ops": {
+                "correct": 78,
+                "total": 425,
+                "accuracy": 18.352941176470587
+              },
+              "regular_4_ops": {
+                "correct": 79,
+                "total": 388,
+                "accuracy": 20.36082474226804
+              },
+              "regular_5_ops": {
+                "correct": 23,
+                "total": 94,
+                "accuracy": 24.46808510638298
+              }
+            },
+            "split": {
+              "regular": 19.68755927929132,
+              "ambiref": 19.72076591770641,
+              "move_contents": 17.706460745901158
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "gdn_2to1_seed44",
+      "limit_per_file": null
+    },
+    "recursive_2to1_seed44": {
+      "variant": "recursive_2to1",
+      "checkpoint": "/checkpoints/recursive_2to1_seed44/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50571,
+          "micro_accuracy": 55.55543349299117,
+          "macro_accuracy": 54.33160537167758,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28358,
+                "total": 49340,
+                "accuracy": 57.47466558573166
+              },
+              "wugs": {
+                "correct": 8225,
+                "total": 13896,
+                "accuracy": 59.18969487622337
+              },
+              "wugs_dist_before": {
+                "correct": 9143,
+                "total": 13896,
+                "accuracy": 65.79591249280368
+              },
+              "wugs_dist_in_between": {
+                "correct": 4845,
+                "total": 13896,
+                "accuracy": 34.86614853195164
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1192,
+          "micro_accuracy": 17.5811209439528,
+          "macro_accuracy": 16.786727915885553,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 128,
+                "total": 508,
+                "accuracy": 25.19685039370079
+              },
+              "ambiref_1_ops": {
+                "correct": 64,
+                "total": 428,
+                "accuracy": 14.953271028037383
+              },
+              "ambiref_2_ops": {
+                "correct": 55,
+                "total": 413,
+                "accuracy": 13.317191283292978
+              },
+              "ambiref_3_ops": {
+                "correct": 54,
+                "total": 409,
+                "accuracy": 13.202933985330073
+              },
+              "ambiref_4_ops": {
+                "correct": 78,
+                "total": 434,
+                "accuracy": 17.972350230414747
+              },
+              "ambiref_5_ops": {
+                "correct": 24,
+                "total": 123,
+                "accuracy": 19.51219512195122
+              },
+              "move_contents_0_ops": {
+                "correct": 175,
+                "total": 516,
+                "accuracy": 33.91472868217054
+              },
+              "move_contents_1_ops": {
+                "correct": 65,
+                "total": 437,
+                "accuracy": 14.874141876430206
+              },
+              "move_contents_2_ops": {
+                "correct": 58,
+                "total": 399,
+                "accuracy": 14.536340852130326
+              },
+              "move_contents_3_ops": {
+                "correct": 53,
+                "total": 406,
+                "accuracy": 13.054187192118226
+              },
+              "move_contents_4_ops": {
+                "correct": 52,
+                "total": 353,
+                "accuracy": 14.73087818696884
+              },
+              "move_contents_5_ops": {
+                "correct": 17,
+                "total": 116,
+                "accuracy": 14.655172413793103
+              },
+              "regular_0_ops": {
+                "correct": 143,
+                "total": 517,
+                "accuracy": 27.659574468085108
+              },
+              "regular_1_ops": {
+                "correct": 49,
+                "total": 409,
+                "accuracy": 11.98044009779951
+              },
+              "regular_2_ops": {
+                "correct": 56,
+                "total": 405,
+                "accuracy": 13.82716049382716
+              },
+              "regular_3_ops": {
+                "correct": 57,
+                "total": 425,
+                "accuracy": 13.411764705882353
+              },
+              "regular_4_ops": {
+                "correct": 53,
+                "total": 388,
+                "accuracy": 13.65979381443299
+              },
+              "regular_5_ops": {
+                "correct": 11,
+                "total": 94,
+                "accuracy": 11.702127659574469
+              }
+            },
+            "split": {
+              "regular": 15.373476873266931,
+              "ambiref": 17.3591320071212,
+              "move_contents": 17.62757486726854
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "recursive_2to1_seed44",
+      "limit_per_file": null
+    },
+    "gdn_3to1_seed44": {
+      "variant": "gdn_3to1",
+      "checkpoint": "/checkpoints/gdn_3to1_seed44/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50053,
+          "micro_accuracy": 54.9863778178143,
+          "macro_accuracy": 53.65169868049853,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28163,
+                "total": 49340,
+                "accuracy": 57.07944872314552
+              },
+              "wugs": {
+                "correct": 8169,
+                "total": 13896,
+                "accuracy": 58.786701208981
+              },
+              "wugs_dist_before": {
+                "correct": 7258,
+                "total": 13896,
+                "accuracy": 52.230857800805985
+              },
+              "wugs_dist_in_between": {
+                "correct": 6463,
+                "total": 13896,
+                "accuracy": 46.5097869890616
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1251,
+          "micro_accuracy": 18.451327433628318,
+          "macro_accuracy": 18.419826625387156,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 111,
+                "total": 508,
+                "accuracy": 21.8503937007874
+              },
+              "ambiref_1_ops": {
+                "correct": 70,
+                "total": 428,
+                "accuracy": 16.35514018691589
+              },
+              "ambiref_2_ops": {
+                "correct": 84,
+                "total": 413,
+                "accuracy": 20.338983050847457
+              },
+              "ambiref_3_ops": {
+                "correct": 72,
+                "total": 409,
+                "accuracy": 17.6039119804401
+              },
+              "ambiref_4_ops": {
+                "correct": 83,
+                "total": 434,
+                "accuracy": 19.12442396313364
+              },
+              "ambiref_5_ops": {
+                "correct": 30,
+                "total": 123,
+                "accuracy": 24.390243902439025
+              },
+              "move_contents_0_ops": {
+                "correct": 139,
+                "total": 516,
+                "accuracy": 26.93798449612403
+              },
+              "move_contents_1_ops": {
+                "correct": 55,
+                "total": 437,
+                "accuracy": 12.585812356979405
+              },
+              "move_contents_2_ops": {
+                "correct": 71,
+                "total": 399,
+                "accuracy": 17.794486215538846
+              },
+              "move_contents_3_ops": {
+                "correct": 70,
+                "total": 406,
+                "accuracy": 17.24137931034483
+              },
+              "move_contents_4_ops": {
+                "correct": 50,
+                "total": 353,
+                "accuracy": 14.164305949008499
+              },
+              "move_contents_5_ops": {
+                "correct": 20,
+                "total": 116,
+                "accuracy": 17.24137931034483
+              },
+              "regular_0_ops": {
+                "correct": 131,
+                "total": 517,
+                "accuracy": 25.338491295938105
+              },
+              "regular_1_ops": {
+                "correct": 53,
+                "total": 409,
+                "accuracy": 12.95843520782396
+              },
+              "regular_2_ops": {
+                "correct": 53,
+                "total": 405,
+                "accuracy": 13.08641975308642
+              },
+              "regular_3_ops": {
+                "correct": 78,
+                "total": 425,
+                "accuracy": 18.352941176470587
+              },
+              "regular_4_ops": {
+                "correct": 62,
+                "total": 388,
+                "accuracy": 15.97938144329897
+              },
+              "regular_5_ops": {
+                "correct": 19,
+                "total": 94,
+                "accuracy": 20.21276595744681
+              }
+            },
+            "split": {
+              "regular": 17.654739139010804,
+              "ambiref": 19.94384946409392,
+              "move_contents": 17.660891273056738
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "gdn_3to1_seed44",
+      "limit_per_file": null
+    },
+    "recursive_3to1_seed44": {
+      "variant": "recursive_3to1",
+      "checkpoint": "/checkpoints/recursive_3to1_seed44/ckpt_00499M.pt",
+      "tasks": {
+        "comps": {
+          "items": 91028,
+          "correct": 50593,
+          "micro_accuracy": 55.57960188073999,
+          "macro_accuracy": 54.15664826953553,
+          "groups": {
+            "uid": {
+              "base": {
+                "correct": 28524,
+                "total": 49340,
+                "accuracy": 57.811106607215244
+              },
+              "wugs": {
+                "correct": 8208,
+                "total": 13896,
+                "accuracy": 59.067357512953365
+              },
+              "wugs_dist_before": {
+                "correct": 7023,
+                "total": 13896,
+                "accuracy": 50.53972366148532
+              },
+              "wugs_dist_in_between": {
+                "correct": 6838,
+                "total": 13896,
+                "accuracy": 49.208405296488195
+              }
+            }
+          },
+          "ties": 0
+        },
+        "entity_tracking": {
+          "items": 6780,
+          "correct": 1319,
+          "micro_accuracy": 19.454277286135692,
+          "macro_accuracy": 18.871660302068605,
+          "groups": {
+            "uid": {
+              "ambiref_0_ops": {
+                "correct": 127,
+                "total": 508,
+                "accuracy": 25.0
+              },
+              "ambiref_1_ops": {
+                "correct": 62,
+                "total": 428,
+                "accuracy": 14.485981308411215
+              },
+              "ambiref_2_ops": {
+                "correct": 76,
+                "total": 413,
+                "accuracy": 18.401937046004843
+              },
+              "ambiref_3_ops": {
+                "correct": 73,
+                "total": 409,
+                "accuracy": 17.848410757946212
+              },
+              "ambiref_4_ops": {
+                "correct": 88,
+                "total": 434,
+                "accuracy": 20.276497695852534
+              },
+              "ambiref_5_ops": {
+                "correct": 26,
+                "total": 123,
+                "accuracy": 21.13821138211382
+              },
+              "move_contents_0_ops": {
+                "correct": 159,
+                "total": 516,
+                "accuracy": 30.813953488372093
+              },
+              "move_contents_1_ops": {
+                "correct": 75,
+                "total": 437,
+                "accuracy": 17.162471395881006
+              },
+              "move_contents_2_ops": {
+                "correct": 78,
+                "total": 399,
+                "accuracy": 19.548872180451127
+              },
+              "move_contents_3_ops": {
+                "correct": 85,
+                "total": 406,
+                "accuracy": 20.935960591133004
+              },
+              "move_contents_4_ops": {
+                "correct": 41,
+                "total": 353,
+                "accuracy": 11.614730878186968
+              },
+              "move_contents_5_ops": {
+                "correct": 16,
+                "total": 116,
+                "accuracy": 13.793103448275861
+              },
+              "regular_0_ops": {
+                "correct": 141,
+                "total": 517,
+                "accuracy": 27.272727272727273
+              },
+              "regular_1_ops": {
+                "correct": 73,
+                "total": 409,
+                "accuracy": 17.848410757946212
+              },
+              "regular_2_ops": {
+                "correct": 69,
+                "total": 405,
+                "accuracy": 17.037037037037038
+              },
+              "regular_3_ops": {
+                "correct": 67,
+                "total": 425,
+                "accuracy": 15.764705882352942
+              },
+              "regular_4_ops": {
+                "correct": 45,
+                "total": 388,
+                "accuracy": 11.597938144329897
+              },
+              "regular_5_ops": {
+                "correct": 18,
+                "total": 94,
+                "accuracy": 19.148936170212767
+              }
+            },
+            "split": {
+              "regular": 18.111625877434356,
+              "ambiref": 19.52517303172144,
+              "move_contents": 18.97818199705001
+            }
+          },
+          "ties": 0
+        }
+      },
+      "run_name": "recursive_3to1_seed44",
+      "limit_per_file": null
+    }
+  }
+}

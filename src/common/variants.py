@@ -12,6 +12,14 @@ VARIANTS: dict[str, str] = {
     "gdn_3to1": "src.gdn_baseline.3to1",
     "recursive_2to1": "src.recursion_gdn.2to1",
     "recursive_3to1": "src.recursion_gdn.3to1",
+    # Revision arms (BabyLM 2026 review response). Registered so they get the
+    # param_count/smoke_test/train/eval plumbing for free, but deliberately NOT
+    # part of the paper's reported grid — modal_train.PAPER_VARIANTS is what the
+    # fan-out entrypoints default to.
+    "untied_2to1_deep": "src.gdn_baseline.2to1_deep",
+    "untied_3to1_deep": "src.gdn_baseline.3to1_deep",
+    "recursive_2to1_uniqinit": "src.recursion_gdn.2to1_uniqinit",
+    "recursive_3to1_uniqinit": "src.recursion_gdn.3to1_uniqinit",
 }
 
 

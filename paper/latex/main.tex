@@ -1,7 +1,7 @@
 % BabyLM 2026 workshop submission — EMNLP 2026 workshop (ACL) style.
 % Build: tectonic main.tex   (or pdflatex + bibtex twice)
 \documentclass[11pt]{article}
-\usepackage[preprint]{acl}
+\usepackage[review]{acl}
 \usepackage{times}
 \usepackage{latexsym}
 \usepackage[T1]{fontenc}
@@ -20,321 +20,426 @@
 
 \title{When Does Depth Recursion Pay? A Parameter-Matched Study of\\Weight-Tied Hybrid Transformers on 100M Unique Words}
 
-\author{Aditya Sasidhar \\
-  \texttt{telikicherlaadityasasidhar@gmail.com}}
+% De-anonymize for camera-ready: restore the author block and switch
+% \usepackage[review]{acl} back to [preprint] or [final].
+\author{Anonymous ACL submission}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Weight-tied depth recursion trades computation for effective depth without adding learned parameters. We pre-train five hybrid Gated DeltaNet (GDN) + grouped-query attention (GQA) transformers from scratch on the BabyLM 2026 Strict corpus under one tokenizer, data order, optimizer, and 500M-token budget. Two parameter-matched pairs share their learned parameter tensors and layer inventories; the recursive configuration re-applies each super-block three times and uses effective-depth residual scaling. At the final checkpoint, recursion improves validation loss by 0.026 and 0.019 nats, with the advantage present in nearly every aligned evaluation window. Mean zero-shot BLiMP rises by 3.31 and 4.21 points; the 3:1 gain is consistent across paradigms, whereas the 2:1 mean is driven by heterogeneous, right-tailed effects rather than a broad directional shift. Both recursive models trail their twins at 100M tokens and lead at 200M; the checkpoint spacing cannot determine whether this crossover precedes the epoch boundary or whether repetition causes it. Across architectures, rankings reverse: the recursive hybrids rank first and second on validation loss, while the larger pure-GQA baseline leads BLiMP at 71.07. The controlled evidence therefore supports recursion as a weight-parameter-efficiency mechanism inside these hybrids, not as a compute- or inference-efficiency result; all models have only one training seed.
+Weight-tied depth recursion trades computation for effective depth without adding learned parameters. We pre-train 21 hybrid Gated DeltaNet (GDN) + grouped-query attention (GQA) transformers from scratch on the BabyLM 2026 Strict corpus under one tokenizer, data order, and optimizer, and use them to ask \emph{on which budget axis} recursion actually pays. Under a matched \textbf{data-exposure} budget, recursion is a robust win \emph{on language-model loss}: two exact parameter-matched pairs improve validation loss by 0.0252 and 0.0195 nats (means over three training seeds; seed sd 0.0015 and 0.0005), and a domain-balanced re-evaluation over the full 17.4M-token dev set puts the advantage at 0.0270 and 0.0196 nats, positive in all six dev domains under all three seeds (36 of 36 cells). Grammatical accuracy does not support a claim either way: replicated over the same three seeds the mean zero-shot BLiMP gain is $+0.58$ (sd 2.44) and $+1.84$ (sd 2.05) points, against a seed-noise floor of up to 2.80 points sd for a \emph{single} architecture retrained---so the $+3.31$ and $+4.21$ obtained from one seed are not separable from training noise. Under a matched \textbf{compute} budget it is not: the same non-recursive twins trained to 1B tokens, using two thirds of the recursive models' training FLOPs, beat them by 0.0117 and 0.0088 nats. Two further controls sharpen the mechanism. Untying the re-applied layers---same depth, same FLOPs, three times the parameters---recovers a further 0.0467 and 0.0399 nats, pricing what tying costs. Replacing effective-depth residual scaling with unique-depth scaling changes loss by only 0.0034 and 0.0003 nats, so the gain comes from tying rather than from the initialization the two differ in. A 25M-token checkpoint grid locates the recursive models' crossover with their twins at 75--125M tokens in the 2:1 pair, before either model has completed one pass over the corpus, ruling out repeated examples as the mechanism there; the crossover moves later as effective depth grows, consistent with an early optimization cost. Recursion is therefore best understood as a \textbf{data-efficiency} mechanism for the fixed-corpus regime this benchmark defines, not a compute- or inference-efficiency one.
 \end{abstract}
 
 \section{Introduction}
-\label{sec:intro}
 
-The BabyLM challenge fixes the training data --- roughly the number of words a human encounters during development --- and asks what modeling choices make the most of it \citep{babylm2026cfp}. Most entries respond with data curricula or training objectives. We instead use the fixed-data setting for what it does best: making an \emph{architectural} question unusually clean to answer.
+The BabyLM challenge fixes the training data---roughly the number of words a human encounters during development---and asks what modeling choices make the most of it \citep{babylm2026cfp}. Most entries respond with data curricula or training objectives. We instead use the fixed-data setting for what it does best: making an \emph{architectural} question unusually clean to answer.
 
 \begin{quote}
 \textbf{If parameters are scarce, is it better to spend them on independent layers, or to re-apply a smaller stack of layers several times with tied weights?}
 \end{quote}
 
-Weight-tied depth recursion --- applying the same block of layers repeatedly --- decouples a model's \emph{effective depth} from its parameter count. The idea is old \citep{dehghani2019universal,lan2020albert} and now spans from-scratch small models \citep{liu2024mobilellm}, large recurrent-depth pre-training \citep{geiping2025recurrent}, conversion of pre-trained models \citep{bae2024relaxed}, and adaptive recursion \citep{bae2025mor}. We ask a narrower controlled question not answered by those studies: under a small-data budget, what changes when a modern hybrid re-applies a fixed inventory of learned layers rather than applying it once?
+Weight-tied depth recursion---applying the same block of layers repeatedly---decouples a model's \emph{effective depth} from its parameter count. The idea is old \citep{dehghani2019universal,lan2020albert} and now spans from-scratch small models \citep{liu2024mobilellm}, large recurrent-depth pre-training \citep{geiping2025recurrent}, conversion of pre-trained models \citep{bae2024relaxed}, and adaptive recursion \citep{bae2025mor}.
 
-We run it inside a modern \emph{hybrid} architecture that interleaves Gated DeltaNet linear-attention layers \citep{yang2025gateddeltanet} with softmax grouped-query attention layers \citep{ainslie2023gqa} in fixed ratios, following the design popularized by Qwen3-Next \citep{qwen2025next}. Hybrids are a natural host for the question: a hybrid \emph{ratio unit} (e.g., GDN--GDN--GQA) is a self-contained token-mixing block, so recursion has an obvious granularity --- repeat the unit. They also let us test a second, related hypothesis: that small models are constrained by the \emph{density of softmax attention} --- the intuition that precise, unbounded-memory retrieval is what a small budget can least afford to cut.
+The question is under-specified in a way that matters. ``Scarce'' can mean scarce \emph{parameters}, \emph{compute}, or \emph{data}, and re-applying a stack three times holds parameters fixed while tripling compute---so a parameter-matched comparison alone can only say that more layer applications beat fewer at equal weight storage, which is close to definitional. We therefore measure the same intervention against three separate budgets, and the answer differs between them.
+
+We run the study inside a modern \emph{hybrid} architecture that interleaves Gated DeltaNet linear-attention layers \citep{yang2025gateddeltanet} with softmax grouped-query attention layers \citep{ainslie2023gqa} in fixed ratios, following the design popularized by Qwen3-Next \citep{qwen2025next}. A hybrid \emph{ratio unit} (e.g., GDN--GDN--GQA) is a self-contained token-mixing block, so recursion has an obvious granularity---repeat the unit.
 
 \paragraph{Contributions.}
 \begin{enumerate}
-  \item \textbf{A matched recursion comparison.} Two pairs have identical learned layer inventories and parameter counts (46{,}913{,}888 and 63{,}487{,}504 non-embedding parameters), with one training stream and recipe. The recursive configuration differs through tied re-application and effective-depth residual scaling.
-  \item \textbf{Evaluation with paired uncertainty.} Both loss gains are consistent across aligned windows, and the 3:1 BLiMP gain is consistent across paradigms. The positive 2:1 BLiMP mean is not a broad directional shift; bootstrap intervals and exact sign tests expose this distinction, while the single-seed limitation remains explicit.
-  \item \textbf{A scoped architectural result.} Loss and grammatical rankings reverse across architectures; attention density is confounded, and position-wise gains are broad with only modest late widening. The evidence supports a within-pair weight-efficiency claim, not compute efficiency or a causal long-range mechanism.
+\item \textbf{Recursion pays per word, not per FLOP.} At matched data exposure, two exact parameter-matched pairs favour recursion by 0.0252 and 0.0195 nats. At matched compute, non-recursive twins trained longer win by 0.0117 and 0.0088 nats while using two thirds of the FLOPs. Both directions are far outside training-seed variance (\S\ref{sec:exposure}, \S\ref{sec:compute}).
+\item \textbf{Three seeds, six domains, and a mechanism isolated by two controls.} Every headline loss comparison is replicated across three independently seeded runs (seed sd $\leq$0.0015 nats) and re-measured on every dev domain rather than a 2M-token prefix; the advantage is positive in 36 of 36 domain$\times$seed cells, and is largest on written text, smallest on speech (\S\ref{sec:exposure}). An untied-depth arm prices what tying costs, and an initialization ablation shows the gain is not an artifact of effective-depth residual scaling (\S\ref{sec:untied}, \S\ref{sec:init}).
+\item \textbf{The crossover precedes the first epoch.} A 25M-token checkpoint grid places the 2:1 crossover at 75--125M tokens, before one corpus pass, eliminating repetition as an explanation; crossover time grows with effective depth (\S\ref{sec:crossover}).
+\item \textbf{BLiMP is too seed-noisy at this scale to carry an architectural claim.} Retraining one architecture under a different seed moves macro-accuracy by up to 5.56 points (sd 2.80), which swamps every architectural contrast in our grid; our own previously reported $+3.31$ does not survive replication. We report the noise floor so others can calibrate against it (\S\ref{sec:blimpseeds}).
 \end{enumerate}
 
-\paragraph{Evaluation note.} A training-time logger averaged per-batch means and biased some losses by $-0.025$. All paper numbers are recomputed from checkpoints with uniform weighting; Appendix~\ref{app:repro} documents the pitfall.
-
-\paragraph{Code and artifacts.} Source code, evaluation artifacts, and reproduction scripts are available at \url{https://github.com/adityasasidhar/recursive-babylm}.
+\paragraph{Evaluation note.} A training-time logger averaged per-\emph{batch} means with batch size tied to a memory setting, biasing four logged losses by about $-0.025$. That logger has since been fixed to weight by rows; every validation number below is recomputed from checkpoints with uniform per-token weighting regardless. Appendix~\ref{sec:repro} documents the pitfall, its fix, and the calibration confirming both.
 
 \section{Related Work}
-\label{sec:related}
 
-\paragraph{Parameter sharing across depth.} Universal Transformers \citep{dehghani2019universal} apply one block recurrently with adaptive halting; ALBERT \citep{lan2020albert} ties encoder layers. Most directly, MobileLLM-LS pre-trains 125M- and 350M-parameter decoder-only models with immediate block-wise sharing and reports downstream gains \citep{liu2024mobilellm}. \citet{geiping2025recurrent} scale a recurrent-depth decoder to 3.5B parameters and 800B tokens with variable test-time recurrence. Relaxed Recursive Transformers convert pre-trained models and soften ties with layer-wise LoRA \citep{bae2024relaxed}, while Mixture-of-Recursions learns token-specific depths \citep{bae2025mor}. Our novelty is therefore not from-scratch sharing itself, but two exact learned-parameter-matched comparisons inside a GDN--GQA hybrid under a controlled small-data stream.
+\paragraph{Parameter sharing across depth.} Universal Transformers \citep{dehghani2019universal} apply one block recurrently with adaptive halting; ALBERT \citep{lan2020albert} ties encoder layers. MobileLLM-LS pre-trains 125M- and 350M-parameter decoder-only models with immediate block-wise sharing \citep{liu2024mobilellm}. \citet{geiping2025recurrent} scale a recurrent-depth decoder to 3.5B parameters. Relaxed Recursive Transformers convert pre-trained models and soften ties with layer-wise LoRA \citep{bae2024relaxed}, while Mixture-of-Recursions learns token-specific depths \citep{bae2025mor}. These studies establish that sharing works; none separates the parameter, compute, and data axes under a fixed corpus, which is what the BabyLM setting makes possible.
 
-\paragraph{Linear attention and the delta rule.} DeltaNet-style linear attention maintains a fast-weight state updated by the delta rule and is parallelizable over sequence length \citep{yang2024deltanet}. Gated DeltaNet adds a data-dependent decay gate and improves over Mamba2 and DeltaNet \citep{yang2025gateddeltanet}. We use the reference Triton kernels from the \texttt{flash-linear-attention} library \citep{yang2024fla}.
+\paragraph{Subquadratic token mixers at BabyLM scale.} This is not the first BabyLM entry to replace or dilute softmax attention. \citet{haller2024babyhgrn} introduced BabyHGRN, which uses the HGRN2 recurrent architecture and outperformed transformer and other subquadratic baselines (LSTM, xLSTM, Mamba) under the 2024 Challenge budgets. Their follow-up BLaLM \citep{haller2025blalm} replaces self-attention with a linear-time mLSTM token mixer plus short convolutions, sliding-window attention, and Hedgehog feature maps, reporting that linear attention combined with sliding-window attention improves zero-shot performance and that Muon converges more stably than AdamW. Our setting differs in two ways that matter: we retain a \emph{minority} of full softmax layers rather than eliminating attention, and our object of study is the re-application schedule of a fixed layer inventory rather than the mixer itself. Their results are the relevant prior for the viability of subquadratic mixers at 100M words; ours addresses a question orthogonal to mixer choice.
 
-\paragraph{Hybrid architectures.} A minority of softmax-attention layers interleaved with a majority of linear-attention layers preserves most of full attention's quality at a fraction of its inference cost; Qwen3-Next \citep{qwen2025next} adopts a 3:1 Gated-DeltaNet:attention ratio at 80B scale. We evaluate 2:1 and 3:1 ratios at BabyLM scale and use the ratio unit as the unit of recursion.
+\paragraph{Linear attention and the delta rule.} DeltaNet-style linear attention maintains a fast-weight state updated by the delta rule \citep{yang2024deltanet}. Gated DeltaNet adds a data-dependent decay gate \citep{yang2025gateddeltanet}. We use the reference Triton kernels from \texttt{flash-linear-attention} \citep{yang2024fla}.
 
-\paragraph{Sample-efficient pre-training.} The BabyLM workshop series \citep{warstadt2023findings,babylm2026cfp} fixes the corpus (Strict track: 100M words; repetition allowed up to 1B words of total exposure) so that architectural and algorithmic effects are comparable across submissions. Our runs consume ${\sim}295$M words of exposure each, within the allowed budget.
+\paragraph{Hybrid architectures.} A minority of softmax layers interleaved with a majority of linear-attention layers preserves most of full attention's quality at a fraction of its inference cost; Qwen3-Next \citep{qwen2025next} adopts a 3:1 ratio at 80B scale. We evaluate 2:1 and 3:1 at BabyLM scale and use the ratio unit as the unit of recursion.
+
+\paragraph{Sample-efficient pre-training.} The BabyLM series \citep{warstadt2023findings,babylm2026cfp} fixes the corpus (Strict: 100M words; repetition allowed up to 1B words of exposure). Our primary runs consume ${\sim}$295M words each; the compute-matched arms consume ${\sim}$589M and ${\sim}$884M, all within budget.
 
 \section{Models}
-\label{sec:models}
 
-All five variants share one spine: a decoder-only pre-norm transformer with $d_{\text{model}} = 768$, RMSNorm \citep[$\epsilon = 10^{-5}$]{zhang2019rmsnorm}, SwiGLU feed-forward blocks \citep{shazeer2020glu} with $d_{\text{ff}} = 2304$ (a fixed $3\times$ multiplier for \emph{all} variants), tied input/output embeddings, and the BabyLM-community BPE tokenizer (vocabulary 16{,}384). Every token-mixing layer is followed by one SwiGLU FFN sub-layer with its own residual connection.
+All variants share one spine: a decoder-only pre-norm transformer with $d_{\text{model}} = 768$, RMSNorm \citep[$\epsilon = 10^{-5}$]{zhang2019rmsnorm}, SwiGLU feed-forward blocks \citep{shazeer2020glu} with $d_{\text{ff}} = 2304$ (a fixed $3\times$ multiplier for \emph{all} variants), tied input/output embeddings, and the BabyLM-community BPE tokenizer (vocabulary 16{,}384).
 
-\paragraph{GQA layers} use 12 query heads and 4 KV heads of dimension 64, rotary position embeddings \citep{su2021roformer} with base 10{,}000, and per-head RMS QK-normalization \citep{henry2020qknorm}. Softmax attention runs FlashAttention-3 on Hopper GPUs \citep{shah2024flashattention3} with an SDPA fallback elsewhere.
+\textbf{GQA layers} use 12 query heads and 4 KV heads of dimension 64, rotary position embeddings \citep{su2021roformer} with base 10{,}000, and per-head RMS QK-normalization \citep{henry2020qknorm}. Softmax attention runs FlashAttention-3 \citep{shah2024flashattention3} on Hopper with an SDPA fallback.
 
-\paragraph{GDN layers} are Gated DeltaNet layers \citep{yang2025gateddeltanet} as implemented in \texttt{flash-linear-attention} v0.5.1: 12 heads of dimension 64, value expansion 1, output gating and short (size-4) depthwise convolutions enabled, and a delta-rule fast-weight state with data-dependent decay. GDN applies its own L2 normalization to queries and keys.
+\textbf{GDN layers} are Gated DeltaNet layers \citep{yang2025gateddeltanet} as implemented in \texttt{flash-linear-attention} v0.5.1: 12 heads of dimension 64, value expansion 1, output gating and short (size-4) depthwise convolutions enabled.
 
-\subsection{The five variants}
-\label{sec:variants}
+\subsection{The variants}
+
+A \emph{ratio unit} is (GDN, GDN, GQA) for 2:1 and (GDN, GDN, GDN, GQA) for 3:1. The non-recursive hybrids stack two units. The recursive hybrids contain \textbf{two independent super-blocks in sequence, each holding one ratio unit, each applied $R = 3$ times with weights tied within that super-block} (never across super-blocks). Unrolled, Recursive 2:1 computes 18 layer applications with the parameters of 6 layers.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Model & s42 & s43 & s44 & sd & range \\
+\midrule
+GDN 2:1        & 62.24 & 65.60 & 67.80 & 2.80 & \textbf{5.56} \\
+Recursive 2:1  & 65.56 & 64.22 & 67.62 & 1.71 & 3.39 \\
+GDN 3:1        & 63.27 & 66.05 & 65.19 & 1.42 & 2.78 \\
+Recursive 3:1  & 67.48 & 66.77 & 65.78 & 0.85 & 1.70 \\
+\bottomrule
+\end{tabular}
+\caption{BLiMP macro-accuracy of one architecture across three training seeds. The same models' validation loss varies by ${\leq}0.0020$ nats.}
+\label{tab:blimpnoise}
+\end{table}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrr}
+\toprule
+Dev domain & Tokens & Wins. & 2:1 & 3:1 \\
+\midrule
+BNC Spoken     & 1.74M & 424  & +0.0267 & +0.0207 \\
+CHILDES        & 5.84M & 1426 & +0.0139 & +0.0099 \\
+Gutenberg      & 3.88M & 946  & \textbf{+0.0406} & \textbf{+0.0310} \\
+OpenSubtitles  & 3.39M & 828  & +0.0238 & +0.0190 \\
+Simple Wiki    & 2.29M & 559  & \textbf{+0.0405} & +0.0267 \\
+Switchboard    & 0.25M & 60   & +0.0164 & +0.0100 \\
+\midrule
+Domain-balanced & 17.39M & 4243 & \textbf{+0.0270} & \textbf{+0.0196} \\
+\bottomrule
+\end{tabular}
+\caption{Paired recursion advantage in nats by dev domain, mean over three seeds (seed sd $\leq$0.0048 throughout). Positive favours the recursive model in every cell---36 of 36 domain$\times$seed$\times$family combinations.}
+\label{tab:domains}
+\end{table}
 
 \begin{table*}[t]
 \centering
 \small
-\setlength{\tabcolsep}{5.5pt}
-\begin{tabular}{llccccc}
+\begin{tabular}{llrrrl}
 \toprule
-Variant & Attention mix & Unique layers & Super-blocks $\times$ R & Eff.\ depth & Non-emb.\ params & Total params \\
+Variant & Mix & Uniq.\ layers & Eff.\ depth & Non-emb.\ params & Role \\
 \midrule
-GQA baseline  & pure GQA      & 10 & ---          & 10 & 68{,}830{,}208 & 81{,}413{,}120 \\
-GDN 2:1       & GDN:GQA = 2:1 & 6  & ---          & 6  & 46{,}913{,}888 & 59{,}496{,}800 \\
-GDN 3:1       & GDN:GQA = 3:1 & 8  & ---          & 8  & 63{,}487{,}504 & 76{,}070{,}416 \\
-Recursive 2:1 & GDN:GQA = 2:1 & 6  & $2 \times 3$ & 18 & 46{,}913{,}888 & 59{,}496{,}800 \\
-Recursive 3:1 & GDN:GQA = 3:1 & 8  & $2 \times 3$ & 24 & 63{,}487{,}504 & 76{,}070{,}416 \\
+GQA baseline & pure GQA & 10 & 10 & 68{,}830{,}208 & no-GDN reference \\
+GDN 2:1 & 2:1 & 6 & 6 & 46{,}913{,}888 & twin of Recursive 2:1 \\
+GDN 3:1 & 3:1 & 8 & 8 & 63{,}487{,}504 & twin of Recursive 3:1 \\
+\textbf{Recursive 2:1} & 2:1 & 6 & 18 & \textbf{46{,}913{,}888} & 2 SB $\times$ $R$=3 \\
+\textbf{Recursive 3:1} & 3:1 & 8 & 24 & \textbf{63{,}487{,}504} & 2 SB $\times$ $R$=3 \\
+Untied 2:1 deep & 2:1 & 18 & 18 & 140{,}740{,}128 & depth/FLOP-matched, untied \\
+Untied 3:1 deep & 3:1 & 24 & 24 & 190{,}460{,}976 & depth/FLOP-matched, untied \\
+Recursive 2:1 (uniq.\ init) & 2:1 & 6 & 18 & 46{,}913{,}888 & initialization ablation \\
+Recursive 3:1 (uniq.\ init) & 3:1 & 8 & 24 & 63{,}487{,}504 & initialization ablation \\
 \bottomrule
 \end{tabular}
-\caption{The five pre-trained variants. GDN 2:1 / Recursive 2:1 and GDN 3:1 / Recursive 3:1 are exact parameter-matched pairs.}
+\caption{Model inventory. GDN 2:1 / Recursive 2:1 and GDN 3:1 / Recursive 3:1 are exact parameter-matched pairs. The untied arms deliberately are not parameter-matched: they hold depth and FLOPs fixed instead. Compute-matched arms are not new models---they are GDN 2:1 and GDN 3:1 trained to larger token budgets (\S\ref{sec:setup}).}
 \label{tab:variants}
 \end{table*}
 
-A \emph{ratio unit} is (GDN, GDN, GQA) for 2:1 and (GDN, GDN, GDN, GQA) for 3:1. The non-recursive hybrids stack two units. The recursive hybrids contain \textbf{two independent super-blocks in sequence, each holding one ratio unit, each applied $R = 3$ times with weights tied within that super-block} (never across super-blocks). Unrolled, Recursive 2:1 computes 18 layer applications with the parameters of 6 layers --- and, notably, applies softmax attention 6 times per token where its twin applies it twice.
+Table~\ref{tab:variants} lists the inventory. Within each matched pair the two models have identical learned layer inventories and parameter counts \emph{to the digit}; \texttt{src/common/param\_count.py} is the executable source of truth and asserts this, along with the untied arms' $3\times$ layer scaling and the ablations' parameter identity.
 
-Within each pair, the models have identical learned layer inventories and parameter counts \emph{to the digit}; the recursive configuration applies the super-blocks three times rather than once and uses the effective-depth initialization below (Table~\ref{tab:variants}). The pure-GQA baseline is a no-GDN reference at its own, larger size; we use it as a size anchor and as the maximum-attention-density point in the descriptive analysis of Section~\ref{sec:density}.
+\subsection{Initialization, and what it does not explain}
+\label{sec:init-design}
 
-\subsection{Initialization}
-\label{sec:init}
+Weights are drawn from $\mathcal{N}(0, 0.02^2)$; residual-output projections are scaled by $1/\sqrt{2 D_{\text{eff}}}$, where $D_{\text{eff}}$ is the \emph{effective} depth---18 or 24 for the recursive models, the plain layer count otherwise. Using effective rather than unique depth is a principled stability choice because the same projection writes into the residual stream $R$ times.
 
-Weights are drawn from $\mathcal{N}(0, 0.02^2)$; residual-output projections (attention output, FFN down-projection) are scaled by $1/\sqrt{2 D_{\text{eff}}}$, where $D_{\text{eff}}$ is the \emph{effective} depth --- 18 or 24 for the recursive models, the plain layer count otherwise. This principled depth-aware choice is nevertheless a second within-pair configuration difference. The experiment therefore identifies the recursive configuration (tying plus its depth-aware scaling), not tying alone; an alternative-scaling ablation is needed to separate them.
+The matched pairs therefore differ at initialization as well as in execution, so the comparison as originally constructed identifies the recursive \emph{configuration} rather than tying alone. The \emph{unique init} arms separate the two: parameter-identical to the recursive models to the digit, differing only in scaling residual-output projections by $1/\sqrt{2 \cdot \text{unique depth}}$, a $\sqrt{3}$ difference. Initialization accounts for 0.0034 and 0.0003 nats against recursion gains of 0.0252 and 0.0195 (\S\ref{sec:init})---real but small.
+
+The untied deep arms use $1/\sqrt{2 n_{\text{layers}}}$ with $n_{\text{layers}} = 18$ or 24, which \emph{equals} their recursive counterparts' $1/\sqrt{2 D_{\text{eff}}}$. Untied and recursive arms therefore share an initialization scale by construction and differ only in whether weights are tied.
 
 \section{Experimental Setup}
 \label{sec:setup}
 
-\paragraph{Data.} We train on the official BabyLM 2026 Strict corpus (six domain files, ${\sim}100$M words) and validate on the official dev split, excluded from the training bins at preprocessing time.\footnote{\texttt{BabyLM-community/BabyLM-2026-Strict} and \texttt{BabyLM-community/BabyLM-dev} on the HuggingFace Hub.} Under the shared 16{,}384-vocabulary tokenizer, one epoch is 169{,}741{,}563 tokens ($\approx$1.70 tokens per whitespace word).
+\paragraph{Data.} We train on the official BabyLM 2026 Strict corpus (six domain files, ${\sim}$100M words) and validate on the official dev split, excluded from the training bins at preprocessing time. Under the shared tokenizer one epoch is 169{,}741{,}563 tokens ($\approx$1.70 tokens per whitespace word).
 
-\paragraph{Recipe (identical for all five runs).} Sequence length 4{,}096; batch 32 sequences = 131{,}072 tokens per optimizer step; 3{,}814 steps = 499{,}908{,}608 tokens $\approx$ 2.9 epochs $\approx$ 295M words of exposure --- compliant with the Strict-track rules ($\leq$100M unique words; $\leq$1B words of total exposure). AdamW \citep{loshchilov2019adamw} with $\beta = (0.9, 0.95)$, weight decay 0.1 on matrices only, gradient clipping at 1.0; peak learning rate $6\times10^{-4}$ with 250 warmup steps and cosine decay to 10\% of peak; bf16 autocast with fp32 master weights; seed 42. Data order is identical across variants by construction: every run draws the same seeded shuffle of 4{,}096-token chunks each epoch, so all five models see exactly the same tokens in exactly the same order.
+\paragraph{Recipe.} One locked recipe for every run: 4{,}096-token sequences, 32 sequences per optimizer step, AdamW at peak $6\times10^{-4}$ with cosine decay to 10\%, and a 499{,}908{,}608-token primary budget ($\approx$2.9 epochs $\approx$295M words). Appendix~\ref{sec:repro} gives the full hyperparameters and hardware.
 
-\paragraph{Evaluation protocol.} All validation numbers are recomputed from retained checkpoints (one per 100M training tokens, plus final) over the same 488 non-overlapping 4{,}096-token windows, with uniform per-token weighting and an identical code path. The 2M-token prefix was fixed to bound the cost of evaluating 25 checkpoints, not selected by model performance. Because preprocessing concatenates sorted domain files, it comprises all 1.738M tokens of BNC Spoken and the first 0.261M tokens of CHILDES rather than a domain-balanced dev sample. Paired uncertainty estimates resample aligned windows; Appendix~\ref{app:repro} documents their scope and the training-logger bug.
+\paragraph{Seeds.} Each matched pair is trained at seeds 42, 43 and 44. A seed sets weight initialization \emph{and} data order together, so the control holds within a seed group while the spread across groups is genuine run-to-run training variance.
 
-\paragraph{Hardware and cost.} Each variant trains on a single H100-80GB (Modal): 18.8--27.6 min for the non-recursive models, 46.2 and 62.1 min for Recursive 2:1 and 3:1 --- about 3 GPU-hours for the grid. Gradient accumulation splits the 32-sequence batch into micro-batches of 16 (8 for Recursive 3:1, whose 24-layer effective depth needs a smaller activation footprint); this leaves the optimizer-step mathematics unchanged.
+\paragraph{Compute-matched arms.} A recursive model executes ${\sim}3\times$ the layer FLOPs per token of its twin, so at 500M tokens it consumes $\approx$1.5B token-equivalents of training compute. We therefore train GDN 2:1 and GDN 3:1 to \textbf{1.5B tokens} (11{,}444 steps, 750 warmup, $\approx$884M words---exact FLOP parity) and to \textbf{1B tokens} (7{,}629 steps, 500 warmup, $\approx$589M words---two thirds of parity), each with the cosine schedule stretched to its own horizon and the warmup \emph{fraction} held at ${\approx}6.5\%$. Both remain inside the Strict track's 1B-word exposure cap. The 1B arm exists because the 1.5B arm overtrains (\S\ref{sec:compute}), so reporting only the FLOP-parity endpoint would flatter recursion.
+
+\paragraph{Evaluation protocol.} All validation numbers are recomputed from retained checkpoints over the same 488 non-overlapping 4{,}096-token windows, with uniform per-token weighting and an identical code path, for all 21 runs and 255 checkpoints. The 2M-token prefix was fixed to bound cost, not selected by model performance; because sorted-file concatenation makes it BNC Spoken plus part of CHILDES, final checkpoints are additionally scored on all six dev domains (\S\ref{sec:exposure}).
 
 \section{Results}
-\label{sec:results}
 
-Table~\ref{tab:final} reports final validation metrics after the full 500M-token budget; Table~\ref{tab:traj} and Figure~\ref{fig:curves} trace the trajectories; Figure~\ref{fig:scatter} summarizes the parameter--quality trade-off; Table~\ref{tab:pos} breaks the losses down by context position; and Table~\ref{tab:blimp} reports zero-shot BLiMP.
-
-\begin{table*}[t]
-\centering
-\small
-\begin{tabular}{lcccccc}
-\toprule
-Model & Non-emb.\ params & Eff.\ depth & Val loss $\downarrow$ & Val ppl $\downarrow$ & bpt $\downarrow$ & Train loss \\
-\midrule
-\textbf{Recursive 3:1} & 63.5M & 24 & \textbf{3.0926} & \textbf{22.03} & \textbf{4.462} & 2.552 \\
-Recursive 2:1          & 46.9M & 18 & 3.1072          & 22.36          & 4.483          & 2.588 \\
-GDN 3:1                & 63.5M & 8  & 3.1121          & 22.47          & 4.490          & 2.568 \\
-GQA baseline           & 68.8M & 10 & 3.1244          & 22.75          & 4.508          & 2.609 \\
-GDN 2:1                & 46.9M & 6  & 3.1333          & 22.95          & 4.520          & 2.614 \\
-\bottomrule
-\end{tabular}
-\caption{Final metrics on the fixed dev slice after 500M training tokens (uniform per-token weighting; single seed). Loss in nats/token; bpt = bits per token. Rows sharing a parameter count are learned-parameter-matched configurations.}
-\label{tab:final}
-\end{table*}
+\subsection{Overall picture}
 
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{lccccc}
+\begin{tabular}{lrrrrrrr}
 \toprule
-Model & 100M & 200M & 300M & 400M & 500M \\
+Model & Non-emb.\ params & Tokens & Val loss $\downarrow$ & Val ppl $\downarrow$ & bpt $\downarrow$ & BLiMP $\uparrow$ & Suppl.\ $\uparrow$ \\
 \midrule
-Recursive 2:1 & 3.5121 & 3.2778 & 3.1803 & 3.1315 & 3.1072 \\
-GDN 2:1       & 3.5033$^{\dagger}$ & 3.2923 & 3.2033 & 3.1564 & 3.1333 \\
-Recursive 3:1 & 3.5292 & \textbf{3.2712} & \textbf{3.1676} & \textbf{3.1174} & \textbf{3.0926} \\
-GDN 3:1       & \textbf{3.4952}$^{\dagger}$ & 3.2739 & 3.1803 & 3.1352 & 3.1121 \\
-GQA baseline  & 3.5560 & 3.3041 & 3.2052 & 3.1505 & 3.1244 \\
-\midrule
-\emph{pair $\Delta$ (2:1, gdn $-$ rec)} & $-0.009$ & $+0.014$ & $+0.023$ & $+0.025$ & $+0.026$ \\
-\emph{pair $\Delta$ (3:1, gdn $-$ rec)} & $-0.034$ & $+0.003$ & $+0.013$ & $+0.018$ & $+0.019$ \\
+Untied 3:1 deep & 190.5M & 500M & \textbf{3.0527} & \textbf{21.17} & \textbf{4.404} & 67.50 & 59.53 \\
+Untied 2:1 deep & 140.7M & 500M & 3.0605 & 21.34 & 4.415 & 68.17 & 59.26 \\
+GDN 3:1 (1B, annealed) & 63.5M & 1B & 3.0838 & 21.84 & 4.449 & 67.71 & 55.95 \\
+\textbf{Recursive 3:1} & 63.5M & 500M & 3.0926 & 22.03 & 4.462 & 67.48 & 55.17 \\
+Recursive 3:1 (uniq.\ init) & 63.5M & 500M & 3.0929 & 22.04 & 4.462 & 67.54 & 54.55 \\
+GDN 2:1 (1B, annealed) & 46.9M & 1B & 3.0955 & 22.10 & 4.466 & 65.58 & 57.95 \\
+\textbf{Recursive 2:1} & 46.9M & 500M & 3.1072 & 22.36 & 4.483 & 65.56 & 53.30 \\
+GDN 2:1 (1.5B) & 46.9M & 1.5B & 3.1081 & 22.38 & 4.484 & 67.56 & \textbf{60.68} \\
+Recursive 2:1 (uniq.\ init) & 46.9M & 500M & 3.1106 & 22.43 & 4.488 & 65.75 & 56.08 \\
+GDN 3:1 (1.5B) & 63.5M & 1.5B & 3.1120 & 22.47 & 4.490 & 66.82 & 56.32 \\
+GDN 3:1 & 63.5M & 500M & 3.1121 & 22.47 & 4.490 & 63.27 & 53.93 \\
+GQA baseline & 68.8M & 500M & 3.1244 & 22.75 & 4.508 & \textbf{71.07} & 59.59 \\
+GDN 2:1 & 46.9M & 500M & 3.1333 & 22.95 & 4.520 & 62.24 & 52.28 \\
 \bottomrule
 \end{tabular}
-\caption{Validation loss (nats) at each retained checkpoint (uniform weighting; one epoch $\approx$169.7M tokens). Bold marks the overall leader at a checkpoint; $\dagger$ marks the within-pair leader at 100M. Both recursive models trail their twins at 100M and lead at 200M, but the grid does not locate the crossover relative to the epoch boundary.}
-\label{tab:traj}
+\caption{All arms on the fixed dev slice, uniform per-token weighting, seed 42. Every model trained on the same 100M-word Strict corpus; the Tokens column is exposure, not corpus size. The GQA baseline used the identical 500M-token budget as the other primary runs---only the arms marked 1B and 1.5B consumed more.}
+\label{tab:main}
 \end{table*}
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/loss_curves.pdf}
-\caption{Training loss (left, smoothed, from training logs) and checkpoint validation loss (right, uniform protocol) versus training tokens. Hue encodes the ablation pair (blue = 2:1, red = 3:1, green = baseline); solid lines are recursive models, dashed are their non-recursive twins. All runs are stable --- zero loss spikes across 19{,}070 optimizer steps in total --- and every model is still improving when the budget ends.}
+\caption{Training loss (left, smoothed, from training logs) and checkpoint validation loss (right, uniform protocol) versus training tokens for the five primary variants. Hue encodes the ablation pair (blue = 2:1, red = 3:1, green = baseline); solid lines are recursive models, dashed their non-recursive twins. All 21 runs in the study are stable, with zero loss spikes.}
 \label{fig:curves}
 \end{figure*}
+
+Read down Table~\ref{tab:main}'s loss column and the ordering is not by parameters, not by effective depth, and not by tokens---it is by how the budget was spent. The rest of this section separates those axes.
+
+\subsection{Recursion at matched exposure}
+\label{sec:exposure}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Pair & s42 & s43 & s44 & mean & sd \\
+\midrule
+2:1 & +0.0261 & +0.0236 & +0.0261 & \textbf{+0.0252} & 0.0015 \\
+3:1 & +0.0195 & +0.0200 & +0.0190 & \textbf{+0.0195} & 0.0005 \\
+\bottomrule
+\end{tabular}
+\caption{Paired recursion advantage (GDN minus Recursive) in nats, replicated over three independently seeded training runs. Per-model seed sd ranges from 0.0005 to 0.0020.}
+\label{tab:seeds}
+\end{table}
+
+At the shared 500M-token budget the recursive member wins both pairs, and the effect replicates (Table~\ref{tab:seeds}). Within seed 42, a paired 100{,}000-resample bootstrap over the 488 aligned windows gives 0.0261 [0.0248, 0.0274] and 0.0195 [0.0183, 0.0207] nats, with recursion winning 480/488 and 462/488 windows (exact sign tests $p = 1.92\times10^{-130}$ and $2.64\times10^{-104}$). The published single-seed values sit essentially on the three-seed means. Establishing the seed floor at ${\leq}0.002$ nats is what makes the smaller effects below interpretable rather than suggestive.
+
+\paragraph{The advantage holds in every dev domain.} Because preprocessing concatenates the six dev files in sorted-filename order, the fixed 2M-token prefix used above is 87\% BNC Spoken and 13\% CHILDES; four of six domains contribute nothing to it. We therefore re-scored the final checkpoint of all thirteen 500M-token runs on the entire 17{,}390{,}678-token dev set, in windows contained within a single domain. The recursive model wins in \textbf{36 of 36} domain$\times$seed$\times$family cells; the domain-balanced advantage is $+0.0270$ (2:1) and $+0.0196$ (3:1), with per-domain values in Table~\ref{tab:domains} (Appendix~\ref{sec:repro}). Two things follow. First, the narrow slice was \emph{conservative, not flattering}: the domain-balanced advantage ($+0.0270$, $+0.0196$) slightly exceeds the prefix figure ($+0.0252$, $+0.0195$), because the prefix is dominated by the two domains where recursion helps least. Second, the effect is domain-structured in the way a depth account predicts---roughly 3$\times$ larger on edited written text (Gutenberg, Simple Wiki) than on conversational speech (CHILDES, Switchboard).
+
+On grammatical minimal pairs the single-seed picture appeared to agree: $+3.31$ [0.38, 6.85] points for the 2:1 pair and $+4.21$ [2.43, 6.11] for the 3:1, with the 3:1 effect directionally broad (46 paradigms won, 20 lost, one tied; $p = .0019$) and the 2:1 mean driven by a positive tail (37 won, 30 lost, $p = .464$). Replicating both pairs across all three seeds dissolves most of this; \S\ref{sec:blimpseeds} reports what is left.
+
+\subsection{Recursion at matched compute: the advantage reverses}
+\label{sec:compute}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+Family & Recursive & Twin 1.5B & Twin 1B \\
+ & (500M, $3\times$) & (parity) & ($\frac{2}{3}$ parity) \\
+\midrule
+2:1 & 3.1072 & 3.1081 & \textbf{3.0955} \\
+3:1 & 3.0926 & 3.1120 & \textbf{3.0838} \\
+\bottomrule
+\end{tabular}
+\caption{Validation loss under matched training FLOPs. The 1B-token arm uses two thirds of the recursive models' compute and still wins both families.}
+\label{tab:compute}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/budget_axes.pdf}
+\caption{The same intervention against two budgets. \textbf{Left:} validation loss against data exposure. At equal exposure the recursive models (solid) sit below their untied twins (dashed); Recursive 2:1 reaches at 295M words what its twin needs ${\sim}$590M words to match. \textbf{Right:} the same runs against training compute in token-equivalents, where a recursive model costs $3\times$ per token. Here the twins' curves run below the recursive endpoints, and both twins reach their minimum at ${\sim}$1.0B token-equivalents before overtraining degrades them. Hue encodes the family (blue = 2:1, red = 3:1).}
+\label{fig:budget}
+\end{figure*}
+
+Inverting the parameter-matched comparison, we hold compute fixed and let exposure vary (Table~\ref{tab:compute}). At exact FLOP parity the 2:1 comparison is a tie (0.0009 nats) and the 3:1 favours recursion (0.0194). But that endpoint is misleading in the twin's disfavour: both 1.5B runs pass their minimum near 1.0B tokens (2:1 best 3.0922; 3:1 best 3.0733) and degrade thereafter as repetition accumulates past ${\sim}6$ epochs. Trained to 1B tokens with the cosine annealed to that horizon, the twins reach 3.0955 and 3.0838---beating the recursive models by \textbf{0.0117 [0.0097, 0.0137] and 0.0088 [0.0067, 0.0111] nats while consuming two thirds of the compute}. Recursion wins only 128/488 and 160/488 windows here. At 6--8$\times$ the seed sd, the reversal is not noise. BLiMP agrees: against the annealed twins recursion is level ($-0.02$ and $-0.23$) and loses on the supplement ($-4.65$ and $-0.78$).
+
+Figure~\ref{fig:budget} shows both axes together. The two axes separate cleanly. Per word of exposure, recursion wins: it reaches 3.1072 on 295M words where the twin needs 589M to reach 3.0955. Per FLOP, it loses. Which conclusion matters depends on which budget binds---and on a fixed-corpus benchmark, the data budget is the one that does.
+
+\subsection{What tying costs}
+\label{sec:untied}
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+Contrast & $\Delta$ loss & 95\% CI & Won \\
+\midrule
+Untied vs Rec., 2:1 & +0.0467 & [.0447, .0488] & 485/488 \\
+Untied vs Rec., 3:1 & +0.0399 & [.0379, .0419] & 485/488 \\
+\bottomrule
+\end{tabular}
+\caption{The price of weight tying. Positive favours the untied model, which holds $3\times$ the learned parameters at identical depth, FLOPs, and initialization scale.}
+\label{tab:untied}
+\end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/params_vs_val.pdf}
-\caption{The parameter--quality trade-off. Recursion improves both parameter-matched pairs ($\Delta$ = 0.026 and 0.019 nats), and both recursive models beat every non-recursive model, including the larger pure-attention baseline.}
-\label{fig:scatter}
+\caption{The parameter--quality trade-off for the primary grid. Vertical dotted lines connect the two parameter-matched pairs; filled markers are recursive models. Both recursive hybrids beat the larger pure-attention baseline on loss.}
+\label{fig:params}
 \end{figure}
 
-\paragraph{Recursion improves both matched configurations.} At the final checkpoint, the recursive member lowers validation loss by 0.026 nats (2.6\% perplexity) in the 2:1 pair and 0.019 nats (2.0\%) in the 3:1 pair. A paired 100{,}000-resample bootstrap over the 488 aligned windows gives differences (non-recursive minus recursive) of 0.0261 [0.0248, 0.0274] and 0.0195 [0.0183, 0.0207] nats (95\% percentile intervals). Exact paired sign tests show the same unusually consistent pattern: recursion wins on 480/488 windows in the 2:1 pair ($p=1.92\times10^{-130}$) and 462/488 in the 3:1 pair ($p=2.64\times10^{-104}$). These statistics quantify finite evaluation-sample uncertainty, not training-seed variance, and the domain-contiguous windows are not fully independent. Descriptively, the two recursive models finish first and second among all five.
+Table~\ref{tab:untied} reports the result: untying is worth 0.0467 and 0.0399 nats---roughly twice the recursion gain itself, for three times the weights. Tying is thus a real compression: it forfeits about 0.04 nats and returns a $3\times$ parameter saving. The clearest evidence that this trade is favourable here is across architectures rather than within a pair: \textbf{Recursive 2:1, at 46.9M non-embedding parameters, reaches 3.1072 against the 68.8M-parameter GQA baseline's 3.1244}---better loss with 32\% fewer learned weights (Figure~\ref{fig:params}). On BLiMP untying buys 2.61 points at 2:1 but nothing at 3:1 ($+0.02$), while both untied arms gain 4--6 points on the supplement.
 
-\paragraph{The advantage appears after 100M tokens.} Each recursive model trails its twin at 100M and leads at 200M; the pair gaps then widen through the retained checkpoints. Because one epoch is 169.7M tokens, this interval straddles the first epoch boundary. The grid cannot determine whether the crossover occurs before or after repeated examples begin, nor distinguish repetition from additional optimization steps. Linear interpolation gives token-efficiency point estimates of 21\% and 16\%, but the 100M checkpoint spacing makes them approximate.
+\subsection{The initialization confound is small}
+\label{sec:init}
 
-\paragraph{Fitting and generalization now agree.} The recursive member also has the lower \emph{training} loss in both pairs (2.588 vs.\ 2.614; 2.552 vs.\ 2.568): the extra effective depth adds fitting capacity, and under this budget that capacity transfers to held-out data rather than overfitting the (repeated) corpus.
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrr}
+\toprule
+Contrast & $\Delta$ loss & 95\% CI & Won \\
+\midrule
+2:1 eff.\ vs uniq.\ init & +0.0034 & [.0024, .0044] & 305/488 \\
+3:1 eff.\ vs uniq.\ init & +0.0003 & [$-$.0007, .0013] & 257/488 \\
+\bottomrule
+\end{tabular}
+\caption{Effective-depth versus unique-depth residual scaling, holding tying fixed. Positive favours effective-depth scaling.}
+\label{tab:init}
+\end{table}
 
-\paragraph{Stability and cost.} All five runs completed with zero loss spikes and gradient norms settling at 0.24--0.26. The recursive models pay for their quality in compute, not parameters: at fixed parameters they execute ${\sim}3\times$ the layer FLOPs per token, and throughput drops accordingly (181k and 134k tokens/s vs.\ 443k and 353k for their twins; Appendix~\ref{app:repro}).
+In Table~\ref{tab:init} the 3:1 contrast is a clean null: the interval spans zero and the sign test is at chance. The 2:1 contrast is small but detectable on evaluation-sample uncertainty---yet at roughly twice the seed sd of 0.0015, and with only 62.5\% of windows won, it is not robustly identified either. BLiMP shows nothing in either family ($-0.20$, $-0.06$).
 
-\subsection{Zero-shot grammatical generalization}
-\label{sec:blimp}
+Effective-depth scaling therefore accounts for at most a seventh of the 2:1 recursion gain and none of the 3:1. The confound described in \S\ref{sec:init-design} exists but does not explain the result: \textbf{tying does the work}. We keep effective-depth scaling as the default on stability grounds rather than performance ones.
 
-We evaluate each final checkpoint on the official BabyLM 2026 full BLiMP and BLiMP Supplement sets \citep{warstadt2020blimp}: 59{,}875 and 5{,}218 minimal pairs, respectively. Following the official causal protocol, candidates are ranked by summed log-probability over all non-BOS sentence tokens, and scores are macro-averaged over the 67 BLiMP paradigms (five supplement tasks). Table~\ref{tab:blimp} reports accuracy at temperature 1.
+\subsection{The crossover precedes the first epoch}
+\label{sec:crossover}
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lrr}
+\begin{tabular}{lrrl}
 \toprule
-Model & BLiMP $\uparrow$ & Supplement $\uparrow$ \\
+Family & seed 43 & seed 44 & vs.\ ep.\ 1 \\
 \midrule
-\textbf{GQA baseline} & \textbf{71.07} & \textbf{59.59} \\
-Recursive 3:1         & 67.48 & 55.17 \\
-Recursive 2:1         & 65.56 & 53.30 \\
-GDN 3:1               & 63.27 & 53.93 \\
-GDN 2:1               & 62.24 & 52.28 \\
-\midrule
-\emph{$\Delta$ 2:1 (rec $-$ gdn)} & $+3.31$ & $+1.01$ \\
-\emph{$\Delta$ 3:1 (rec $-$ gdn)} & $+4.21$ & $+1.24$ \\
+2:1 ($D_{\text{eff}}$\,18) & 75--100M & 100--125M & \textbf{before} \\
+3:1 ($D_{\text{eff}}$\,24) & 150--175M & 175--200M & at\,/\,after \\
 \bottomrule
 \end{tabular}
-\caption{Zero-shot grammatical minimal-pair accuracy on the official BabyLM 2026 full evaluation sets. Scores macro-average paradigms/tasks; bold marks the overall leader. Pair deltas are point estimates.}
-\label{tab:blimp}
+\caption{Where the recursive model overtakes its twin, bracketed to 25M tokens. One corpus pass is 169.7M tokens.}
+\label{tab:crossover}
 \end{table}
 
-\paragraph{The 3:1 pair provides the clearest evidence beyond LM loss.} Paired bootstrap over the 67 paradigms gives a 3:1 recursion gain of $+4.21$ [2.43, 6.11] points. It wins on 46 paradigms, loses on 20, and ties on one (two-sided exact sign test $p=.0019$), so both the mean and direction of the effect agree. The 2:1 mean gain is $+3.31$ [0.38, 6.85], but it wins on only 37 paradigms and loses on 30 ($p=.464$). Its median gain is just $+0.64$ points: a smaller subset of large positive effects produces a right tail and pulls up the mean, so the bootstrap CI does not establish a broad paradigm-level shift. The tests answer different questions rather than contradicting each other. The five-task supplement is too small for its positive point estimates to be conclusive: $+1.01$ [$-0.79$, 3.49] and $+1.24$ [$-2.81$, 6.13]. All of these statistics quantify evaluation-set sampling only and do not replace independent training seeds.
+Table~\ref{tab:crossover} brackets the crossover. In the 2:1 pair it happens while both models are still inside their first pass over the corpus, so \textbf{repeated examples cannot be the mechanism there}. The 3:1 crossover sits near the boundary and remains ambiguous with respect to it. What varies systematically is effective depth: the 18-layer configuration crosses at ${\sim}$100M tokens and the 24-layer one at ${\sim}$175M, in both seeds. That ordering is what an early optimization cost predicts---deeper tied models pay more to get started---and is not what a repetition account predicts, since both models meet the epoch boundary at the same token count.
 
-\paragraph{The across-architecture ranking reverses.} The pure-GQA baseline, fourth on validation loss, ranks first on both grammatical suites (71.07 / 59.59). Recursive 3:1 is the strongest hybrid but does not overtake it. For external scale, the official BabyLM 2026 Strict GPT-2 reference reports 74.53 / 65.00; that model differs in architecture, recipe, and exposure, so this is context rather than a controlled comparison.\footnote{\url{https://github.com/babylm-org/babylm-eval\#strict--strict-small}} Our results are not yet a complete Challenge score (Limitations).
+\subsection{Grammatical accuracy does not replicate across seeds}
+\label{sec:blimpseeds}
 
-\subsection{Coarse density comparison: no identified causal effect}
-\label{sec:density}
-
-A plausible reading of hybrid designs is that softmax attention --- with its unbounded, token-precise memory --- is the scarcest resource in a small model. Our grid includes 10 softmax applications in the all-attention baseline, two in each non-recursive hybrid, and six in each recursive hybrid. This is not a density ablation: the pure-GQA baseline also differs in parameter count, unique depth, and layer type, while recursion changes every sublayer's application count. Table~\ref{tab:pos} therefore provides descriptive evidence about these trained models, not an identified effect of attention density.
-
-\begin{table*}[t]
+\begin{table}[t]
 \centering
-\small
-\begin{tabular}{lcccccc}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llrrrrr}
 \toprule
-Model & Softmax apps & 0--256 & 256--1K & 1K--2K & 2K--4K & Long-range gain \\
+Pair & Suite & s42 & s43 & s44 & mean & sd \\
 \midrule
-Recursive 3:1 & 6  & 3.2516 & 3.0998 & 3.0793 & 3.0768 & \textbf{0.0230} \\
-Recursive 2:1 & 6  & 3.2640 & 3.1148 & 3.0944 & 3.0912 & \textbf{0.0237} \\
-GDN 3:1       & 2  & 3.2675 & 3.1172 & 3.0993 & 3.0972 & 0.0200 \\
-GQA baseline  & 10 & 3.2862 & 3.1299 & 3.1093 & 3.1096 & 0.0202 \\
-GDN 2:1       & 2  & 3.2884 & 3.1388 & 3.1204 & 3.1184 & 0.0204 \\
+2:1 & BLiMP & +3.31 & $-$1.38 & $-$0.18 & \textbf{+0.58} & 2.44 \\
+2:1 & Suppl. & +1.01 & $-$4.82 & +2.54 & \textbf{$-$0.42} & 3.88 \\
+3:1 & BLiMP & +4.21 & +0.71 & +0.59 & \textbf{+1.84} & 2.05 \\
+3:1 & Suppl. & +1.24 & +4.20 & $-$0.25 & \textbf{+1.73} & 2.26 \\
 \bottomrule
 \end{tabular}
-\caption{Final-checkpoint validation loss by context position (nats; same 488-window slice). ``Softmax apps'' = softmax-attention applications per token (effective). ``Long-range gain'' = loss(256--1K) $-$ loss(2K--4K): how much a model improves when given long context.}
-\label{tab:pos}
-\end{table*}
+\caption{Recursion advantage in macro-accuracy points, replicated over three seeds. Seed 42---the only seed evaluated in the original submission---is the most favourable of the three in both suites.}
+\label{tab:blimpseeds}
+\end{table}
 
-\paragraph{Across-architecture loss is not ordered by density.} The all-attention baseline loses to GDN 3:1 (3.1244 vs.\ 3.1121) and beats GDN 2:1. The two hybrids have the same two softmax applications but different depth and parameter counts. These observations rule out a simple monotone ordering in this grid; they do not show that density is irrelevant.
+Validation loss and BLiMP behave completely differently under seed replication, and the difference is large enough to change what this paper claims (Table~\ref{tab:blimpseeds}).
 
-\paragraph{Non-recursive long-range gains are numerically similar.} The baseline and two hybrids improve by 0.0202, 0.0200, and 0.0204 nats from the 256--1K to 2K--4K buckets. We did not retain per-window position losses, so uncertainty for these deltas-of-deltas cannot be estimated from the artifact. The appropriate conclusion is that this coarse analysis detects no long-context advantage for the denser baseline---not that two softmax layers are sufficient in general.
+The cause is not a defect of any one contrast but the noise floor of the benchmark at this scale. Retraining a \emph{single} architecture under a different seed, changing nothing else, moves BLiMP macro-accuracy by 1.70 to 5.56 points (Table~\ref{tab:blimpnoise}, Appendix~\ref{sec:repro}). A 5.56-point swing from the seed alone is larger than any architectural difference in our grid, and it swallows two cross-architecture readings we previously drew. The pure-GQA baseline leads BLiMP at 71.07 while sitting tenth of thirteen on loss, a 3.59-point margin; and GDN 2:1 appeared to gain 5.32 points from exposure alone (62.24 $\rightarrow$ 67.56, 295M to 884M words), which we had called the largest movement in the grid. Both are single-seed, and both lie inside the 5.56-point spread of one architecture, so we no longer claim either. For external scale the official BabyLM 2026 Strict GPT-2 reference reports 74.53 / 65.00, on a different architecture, recipe and exposure. The 2:1 recursion gain we previously reported at $+3.31$ is therefore withdrawn: it is one draw from a distribution whose spread exceeds it. The 3:1 gain keeps its sign in all three seeds and is the only accuracy claim we still make, at $+1.84 \pm 2.05$---directionally consistent, but with an interval that includes values near zero.
 
-\paragraph{The recursion gap is broad and widens modestly.} In the 2:1 pair, the gap is 0.0244 / 0.0240 / 0.0260 / 0.0272 nats across the four buckets; in the 3:1 pair it is 0.0159 / 0.0174 / 0.0200 / 0.0204. Most of the advantage is position-independent, with a small descriptive widening at later positions---cleaner in the 3:1 pair. Because recursion triples softmax, GDN, and FFN applications together, this analysis cannot assign the widening to a particular component.
+We state this as a finding rather than a limitation because the exposure is general: BabyLM-scale papers routinely compare architectures on single-seed BLiMP differences of one to three points, which our measurement says are not resolvable without replication.
 
-For small-budget practitioners the metric matters: the recursive configuration improves the matched hybrids, but the BLiMP ranking and the confounded density axis leave the role of dense softmax attention unresolved.
+\paragraph{The other two official zero-shot suites are also null.} All thirteen 500M-token runs were also evaluated on the full official COMPS and entity-tracking sets. Recursion moves COMPS by $-0.23$ (sd 0.45) and $+0.21$ (sd 0.27), and entity tracking by $-0.99$ (sd 1.41) and $-0.10$ (sd 0.55); three of four contrasts change sign across seeds. More telling than the nulls is the absolute level: every model scores at or below the 20\% chance level on entity tracking (16.79--19.11), far outside binomial noise over 6{,}780 items and not a length artifact---correct options and distractors both average 26.5 characters. The official GPT-2 reference reaches 23.58 there; COMPS sits at 53.5--54.7 against a 50\% floor. Neither suite discriminates at this scale, so neither bears on the architectural question.
 
 \section{Discussion}
-\label{sec:discussion}
 
-\paragraph{Recursion as a parameter-efficiency lever.} Both comparisons robustly favor the recursive configuration on validation loss. For loss, the larger payoff occurs where the twin is shallower (0.026 nats at 6 unique layers vs.\ 0.019 at 8), and ordering models by effective depth nearly predicts the full loss ranking. BLiMP is less uniform: the 3:1 pair shows a broad $+4.21$-point improvement, while the 2:1 pair's $+3.31$-point mean is driven by a positive tail and its sign test is null. The robust within-pair conclusion is therefore that \emph{the recursive configuration improves predictive fit in both pairs and grammatical minimal-pair accuracy in the 3:1 pair}; effective depth alone does not predict performance across architectures.
+\paragraph{Recursion is a data-efficiency mechanism.} The two budget axes give opposite answers, and both are solid: $+0.0252/+0.0195$ nats per matched word, $-0.0117/-0.0088$ per matched FLOP. Tied re-application converts \emph{additional computation} into quality at fixed parameter count, less efficiently than simply training the shallower model longer---but under a fixed corpus ``longer'' means repeating data, and repetition has a ceiling visible in our own runs. Recursion buys quality without spending exposure: where exposure is capped and compute is not, that is the useful trade; outside it, it is not.
 
-\paragraph{Metric-dependent architecture ranking.} Validation loss rewards the recursive hybrids, while BLiMP rewards the larger all-attention baseline. BLiMP morphology shows the largest baseline margin (85.60 vs.\ 78.80 for Recursive 3:1). Both recursive models have positive within-pair macro means, but only the 3:1 effect is directionally broad across paradigms. This divergence argues against selecting small models from dev loss alone and motivates reporting both distributional fit and targeted linguistic evaluation.
+\paragraph{Parameter efficiency survives on its own terms.} Recursive 2:1 beats a 47\% larger pure-attention baseline on loss, and untying costs $3\times$ the weights to buy 0.04 nats: under a weight-storage constraint---not a latency or FLOP one---recursion remains attractive, and \S\ref{sec:compute} delimits rather than contradicts this. The 3:1 gap is the smaller of the two, most likely because its twin is less depth-starved at 8 unique layers and because the 24-deep tied model crosses over ${\sim}$75M tokens later (\S\ref{sec:crossover}), leaving less budget to amortize its early deficit.
 
-\paragraph{The crossover needs finer checkpoints.} The sign changes somewhere between 100M and 200M tokens, an interval that straddles the 169.7M-token epoch boundary. These measurements establish delayed improvement, not a repetition mechanism: the same crossover could follow optimization step count on a larger unique corpus. Finer checkpoints around one epoch, or a half-corpus experiment that changes epoch length at fixed token budget, are needed to distinguish those explanations.
+\paragraph{What the initialization result means.} We adopted effective-depth scaling on stability grounds and it delivered stability---21 runs, zero loss spikes, smooth residual-RMS growth across passes. It did not deliver much accuracy. Practitioners should treat depth-aware residual scaling as a stability measure, not a performance lever, and should not attribute reported recursion gains to it.
 
-\paragraph{Parameter-matched is not compute- or inference-matched.} Within each pair the recursive model uses ${\sim}3\times$ the forward/backward FLOPs per token (unrolled footprint 140.7M vs.\ 46.9M; 190.5M vs.\ 63.5M). Naively unrolled autoregressive decoding also needs state/cache for each application, increasing KV-cache and GDN recurrent-state storage relative to the twin unless a specialized sharing scheme is introduced. Parameter matching isolates quality per learned weight under a fixed weight-storage budget; it does not imply lower latency, activation memory, inference-state memory, or compute. A compute-matched training comparison remains necessary.
-
-\paragraph{Why is the 3:1 gap smaller than the 2:1 gap?} Two non-exclusive candidates. (i) \emph{Depth adequacy}: at 8 unique layers the twin is less depth-starved, so borrowed depth buys less. (ii) \emph{Optimization cost}: the 24-deep tied model pays the largest first-epoch penalty ($-0.034$ nats at 100M tokens, vs.\ $-0.009$ for the 18-deep one) and has the least budget left to amortize it; under a longer budget the 3:1 gap may still be growing (it rose from $+0.003$ at 200M to $+0.019$ at 500M with no sign of flattening).
+\paragraph{Metric-dependent ranking, and which metric to trust.} Validation loss rewards depth and parameters; BLiMP rewards the all-attention baseline. BLiMP morphology shows the baseline's largest margin (85.60 vs 78.80 for Recursive 3:1). We had read this divergence as an argument against selecting small models on dev loss alone. Seed replication inverts that advice: at this scale dev loss resolves architectures to ${\sim}0.001$ nats while BLiMP moves by several points on the seed alone (\S\ref{sec:blimpseeds}). The divergence is real, but the sharper reading is that one of the two metrics is measuring the architecture and the other is largely measuring the draw.
 
 \section{Conclusion}
-\label{sec:conclusion}
 
-In two learned-parameter-matched hybrid comparisons, the recursive configuration improves validation loss by 0.026 and 0.019 nats, winning on 480/488 and 462/488 aligned windows. Mean BLiMP improves by 3.31 and 4.21 points, but only the 3:1 gain is directionally consistent across paradigms; the 2:1 result is mean-driven and heterogeneous. The loss advantage appears between the 100M and 200M checkpoints, but neither its relation to the epoch boundary nor a causal role for repetition is resolved. Across architectures, the metrics disagree: recursive hybrids rank first and second on loss, while the larger pure-GQA baseline leads BLiMP at 71.07. Thus tied computation is promising for quality per learned hybrid-model weight, at the cost of roughly threefold computation and greater inference state. Multi-seed, initialization, compute-matched, and broader BabyLM evaluations are required before making stronger claims.
+Across 21 controlled runs, weight-tied depth recursion improves parameter-matched validation loss by 0.0252 and 0.0195 nats---replicated over three seeds, positive in all six dev domains. Under matched compute the advantage reverses. Tying itself produces the effect: untying recovers 0.0467 and 0.0399 nats at $3\times$ the parameters, and residual scaling accounts for at most 0.0034. No accuracy benchmark we ran resolves the contrast, so the claim rests on loss. Depth recursion pays where words are scarce and FLOPs are not---the regime BabyLM defines, and a narrower claim than ``recursion helps.''
 
 \section*{Limitations}
 
-\begin{itemize}
-  \item \textbf{Single training seed.} Every model was trained once with seed 42. Paired intervals over windows and paradigms quantify finite evaluation-sample uncertainty only; they cannot measure run-to-run optimization variance. Multi-seed replication is the highest-priority follow-up.
-  \item \textbf{Narrow, domain-contiguous dev slice.} The fixed 2M-token prefix contains BNC Spoken and part of CHILDES, not all six dev domains, and adjacent windows are correlated. It was chosen to bound 25-checkpoint evaluation cost, but wider domain-balanced re-evaluation is needed.
-  \item \textbf{Partial official suite.} We report full BLiMP and BLiMP Supplement only. The official Challenge submission additionally calls for COMPS, entity tracking, fine-tuning tasks, and fast checkpoint evaluations; incomplete submissions receive zeros for missing tasks. This is a non-competition workshop paper, but the missing suite limits claims of BabyLM competitiveness.
-  \item \textbf{Parameter- and initialization-matched scope.} Recursive models use ${\sim}3\times$ the training/inference FLOPs and, under naive decoding, more inference state. Their effective-depth residual scaling also differs from the twins, so the result identifies the recursive configuration rather than tying alone. Compute-matched and alternative-initialization controls are absent.
-  \item \textbf{Coarse, confounded density axis.} The all-attention baseline differs from hybrids in parameters, depth, and layer type; position-wise deltas lack retained per-window uncertainty. Section~\ref{sec:density} cannot identify a causal effect of attention density.
-  \item \textbf{Narrow architectural slice.} One width (768), two sizes, two hybrid ratios, $R = 3$ only, and a 500M-token budget (${\sim}30\%$ of the exposure the Strict track allows). The learning rate ($6\times10^{-4}$) was a literature prior shared by all runs rather than tuned per variant. Token-efficiency figures are interpolated on a 100M-token checkpoint grid.
-  \item \textbf{Minor provenance asymmetries.} The baseline ran on PyTorch 2.12.1 vs.\ 2.13.0 for the other four (a dependency-pinning slip corrected mid-study), and Recursive 3:1 used gradient-accumulation micro-batches of 8 vs.\ 16 elsewhere. Both leave the optimizer-step mathematics and data order unchanged, and the reported evaluation is checkpoint-based and identical across models.
-\end{itemize}
+\textbf{Grammatical accuracy is unresolved, not merely unreplicated.} The paired models are now evaluated at three seeds (\S\ref{sec:blimpseeds}), and the result is that BLiMP's seed noise at this scale (up to 5.56 points range for one architecture) exceeds the effects we set out to measure. We therefore make no 2:1 accuracy claim and only a weak 3:1 one. Every other model in Table~\ref{tab:main}---the untied, unique-init and compute-matched arms and the baseline---is still evaluated at seed 42 alone, so all cross-architecture BLiMP comparisons here inherit that floor and should be read as provisional.
 
-\section*{Acknowledgments}
+\textbf{The checkpoint \emph{series} is still on the narrow slice.} Final-checkpoint numbers are now domain-balanced over the full 17.4M-token dev set (\S\ref{sec:exposure}), but the 255-checkpoint trajectories behind Figure~\ref{fig:curves}, the crossover brackets of \S\ref{sec:crossover}, and the compute-matched curves of \S\ref{sec:compute} are still computed on the 2M-token prefix, to bound evaluation cost. Since the per-domain deltas are same-signed and similar in magnitude, we do not expect the trajectories to reorder, but we have not verified that at every checkpoint.
 
-Training used the \texttt{flash-linear-attention} library and FlashAttention-3 kernels; compute was rented on Modal H100 instances.
+\textbf{Fine-tuning is not run.} We report the four official zero-shot suites (BLiMP, BLiMP Supplement, COMPS, entity tracking) but none of the fine-tuning tasks, which would require a Hugging Face wrapper around our native checkpoints and an \texttt{attention\_mask} argument our GQA implementation does not accept---a change to the one shared primitive all 21 runs depend on.
+
+\textbf{Compute matching is by token budget.} We match FLOPs analytically and verify against measured throughput (Appendix~\ref{sec:repro}), but did not tune the learning rate per budget; all runs share the $6\times10^{-4}$ literature prior. A tuned longer run might favour the twins further.
+
+\textbf{Narrow architectural slice.} One width (768), two sizes, two hybrid ratios, $R = 3$ only. We do not vary $R$, and the untied arms exist at one depth each.
+
+\textbf{Inference cost is untouched.} Naively unrolled decoding needs state for each application, increasing KV-cache and GDN recurrent-state storage. Parameter matching isolates quality per learned weight under a fixed weight-storage budget; it implies nothing about latency or inference-state memory.
+
+% Acknowledgments omitted for anonymous review; restore for camera-ready:
+% \section*{Acknowledgments}
+%
+% Training used the \texttt{flash-linear-attention} library and FlashAttention-3 kernels; compute was rented on Modal H100 instances. We thank the BabyLM 2026 reviewers, whose requests for an untied-depth control, a compute-matched comparison, an initialization ablation, and seed replication produced \S\ref{sec:compute} through \S\ref{sec:crossover}---that is, most of what this paper now concludes.
 
 \bibliography{custom}
 
 \appendix
 
 \section{Reproducibility details}
-\label{app:repro}
+\label{sec:repro}
 
-\paragraph{Per-run provenance.} Table~\ref{tab:provenance} reports the hardware and runtime metadata needed to interpret the compute comparison.
+\paragraph{Recipe.} Sequence length 4{,}096; batch 32 sequences = 131{,}072 tokens per optimizer step. AdamW \citep{loshchilov2019adamw} with $\beta = (0.9, 0.95)$, weight decay 0.1 on matrices only, gradient clipping 1.0; peak learning rate $6\times10^{-4}$ with cosine decay to 10\% of peak; bf16 autocast with fp32 master weights. The primary budget is 3{,}814 steps = 499{,}908{,}608 tokens $\approx$ 2.9 epochs $\approx$ 295M words, with 250 warmup steps.
+
+\paragraph{Hardware.} Every run trains on a single H100-80GB (Modal); the full grid is ${\sim}$12 GPU-hours. All 21 runs completed with zero loss spikes (Figure~\ref{fig:curves}).
 
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{lccccc}
+\begin{tabular}{lrrrrrr}
 \toprule
-Model & Wall clock & Throughput (tok/s) & Peak mem (GiB) & Micro-batch & PyTorch \\
+Model & Tokens & Wall clock & Throughput (tok/s) & Peak mem (GiB) & Micro-batch & Spikes \\
 \midrule
-GQA baseline  & 27.6 min & 302{,}861 & 42.7 & 16 & 2.12.1+cu130 \\
-GDN 2:1       & 18.8 min & 443{,}084 & 33.6 & 16 & 2.13.0+cu130 \\
-GDN 3:1       & 23.6 min & 353{,}301 & 40.2 & 16 & 2.13.0+cu130 \\
-Recursive 2:1 & 46.2 min & 180{,}660 & 70.0 & 16 & 2.13.0+cu130 \\
-Recursive 3:1 & 62.1 min & 134{,}334 & 45.4 & 8  & 2.13.0+cu130 \\
+GQA baseline & 500M & 27.6 min & 302{,}861 & 42.7 & 16 & 0 \\
+GDN 2:1 & 500M & 18.8 min & 443{,}084 & 33.6 & 16 & 0 \\
+GDN 3:1 & 500M & 23.6 min & 353{,}301 & 40.2 & 16 & 0 \\
+Recursive 2:1 & 500M & 46.2 min & 180{,}660 & 70.0 & 16 & 0 \\
+Recursive 3:1 & 500M & 62.1 min & 134{,}334 & 45.4 & 8 & 0 \\
+Untied 2:1 deep & 500M & 48.3 min & 172{,}852 & 37.1 & 8 & 0 \\
+Untied 3:1 deep & 500M & 62.6 min & 133{,}451 & 47.5 & 8 & 0 \\
+Recursive 2:1 (uniq.\ init) & 500M & 46.5 min & 179{,}427 & 70.0 & 16 & 0 \\
+Recursive 3:1 (uniq.\ init) & 500M & 61.9 min & 134{,}771 & 45.4 & 8 & 0 \\
+GDN 2:1 (1B, annealed) & 1B & 36.1 min & 462{,}782 & 33.6 & 16 & 0 \\
+GDN 3:1 (1B, annealed) & 1B & 44.8 min & 372{,}349 & 40.2 & 16 & 0 \\
+GDN 2:1 (1.5B) & 1.5B & 53.3 min & 469{,}173 & 33.6 & 16 & 0 \\
+GDN 3:1 (1.5B) & 1.5B & 66.5 min & 376{,}515 & 40.2 & 16 & 0 \\
 \bottomrule
 \end{tabular}
-\caption{Per-run provenance. All runs: $1\times$ NVIDIA H100 80GB HBM3 (Modal), CUDA 13.0, Python 3.11, \texttt{flash-linear-attention} 0.5.1, FlashAttention-3 for GQA layers, bf16 autocast, fp32 master weights, fused AdamW.}
+\caption{Per-run cost. All runs: $1\times$ NVIDIA H100 80GB HBM3 (Modal), CUDA 13.0, Python 3.11, \texttt{flash-linear-attention} 0.5.1, FlashAttention-3 for GQA layers, bf16 autocast, fp32 master weights, fused AdamW. Seed replicates (seeds 43, 44 of the four paired models) are omitted for space and match their seed-42 counterparts within measurement noise.}
 \label{tab:provenance}
 \end{table*}
 
-Tokenized-corpus SHA (first 12 hex): \texttt{fab530e59dea}; 169{,}741{,}563 training tokens per epoch in 41{,}440 chunks of 4{,}096.
+Table~\ref{tab:provenance} reports per-run cost.
 
-\paragraph{Training configuration (all variants).} seq\_len 4096 $\cdot$ batch 32 sequences (131{,}072 tokens/step) $\cdot$ 3{,}814 steps (499{,}908{,}608 tokens) $\cdot$ AdamW $\beta = (0.9, 0.95)$, wd 0.1 (dim $\geq 2$ params only), fused $\cdot$ grad clip 1.0 $\cdot$ LR $6\times10^{-4}$, warmup 250 steps, cosine $\to 6\times10^{-5}$ $\cdot$ seed 42 $\cdot$ checkpoints every 100M tokens (five per run, all retained).
+\paragraph{Throughput confirms the FLOP match.} The untied deep arms are depth- and FLOP-matched to the recursive models by construction, and measured throughput agrees independently: 172{,}852 vs 180{,}660 tok/s at 2:1 and 133{,}451 vs 134{,}334 at 3:1. The compute-parity claim in \S\ref{sec:compute} therefore does not rest on the analytic $3\times$ alone.
 
-\paragraph{The evaluation-weighting pitfall.} Our training-time validation logger split the 488 evaluation windows into batches of \texttt{micro\_batch\_size} and returned the mean of per-batch means. For the four runs with micro-batch 16, $488 = 30 \times 16 + 8$, so the trailing 8 windows were weighted double per window; for the micro-batch-8 run, $488 = 61 \times 8$ exactly, so weighting was uniform. The slice follows sorted-file order: 1{,}738{,}031 BNC Spoken tokens followed by 260{,}817 CHILDES tokens. The last eight windows fall in the easier CHILDES region and average 1.60 nats against 3.15 for the preceding 480, so the mb=16 runs' logged losses were biased low by $\approx 0.0247$ while the mb=8 run's were unbiased. Reconstructing the logger's arithmetic reproduces every logged value to four decimals. All paper numbers use uniform per-token weighting. The lesson generalizes: \emph{validation reductions must not depend on memory-layout settings.}
+\paragraph{The evaluation-weighting pitfall, and its fix.} The original training-time validation logger split the 488 evaluation windows into batches of \texttt{micro\_batch\_size} and returned the mean of per-batch means. For micro-batch 16, $488 = 30\times16 + 8$, so the trailing 8 windows were weighted double; for micro-batch 8, $488 = 61\times8$ exactly. The slice follows sorted-file order, and the last eight windows fall in an easier CHILDES region (1.60 nats against 3.15 for the preceding 480). Calibrating the five original runs against checkpoint evaluation recovers the bias exactly: $+0.0246$, $+0.0248$, $+0.0245$, $+0.0245$ nats for the four micro-batch-16 runs and $-0.0000$ for the micro-batch-8 run. The logger now weights by rows, and the new runs' logged values match checkpoint evaluation to four decimals. All paper numbers use uniform per-token weighting from checkpoints regardless of logger version. The lesson generalizes: \emph{validation reductions must not depend on memory-layout settings}---and a correction calibrated on one code version must not be carried across a fix.
 
-\paragraph{Paired uncertainty.} \texttt{paper/figures/paired\_uncertainty.py} uses 100{,}000 paired nonparametric resamples with seed 20260714. Validation resamples the 488 aligned windows and reports mean non-recursive-minus-recursive loss; BLiMP resamples aligned UIDs and reports recursive-minus-non-recursive macro accuracy. We pair each mean bootstrap interval with an exact sign test: the former estimates uncertainty in the macro mean and is sensitive to effect magnitude, whereas the latter tests whether either direction occurs more often after dropping ties. The percentile intervals measure only finite evaluation-sample uncertainty. They assume exchangeable units despite domain/order correlations and do not represent training-seed variance; full means, medians, intervals, and sign tests are stored in \texttt{paper/figures/paired\_uncertainty.json}.
+\paragraph{Paired uncertainty.} \texttt{paper/figures/paired\_uncertainty.py} uses 100{,}000 paired nonparametric resamples with seed 20260714. Validation resamples the 488 aligned windows; BLiMP resamples aligned UIDs. Every contrast is signed so that positive favours the treatment arm. Bootstrap intervals measure only finite evaluation-sample uncertainty and assume exchangeable units despite domain/order correlations; the separate \texttt{seed\_replication} block reports across-seed spread, the only estimate of training variance here.
 
-\paragraph{BLiMP protocol.} \texttt{src/common/blimp\_eval.py} reproduces the official BabyLM 2026 causal scorer directly against native checkpoints: summed log-probability over every non-BOS sentence token, temperature 1, macro-averaged by UID. Evaluator commit \texttt{3d57ddc8} and data revision \texttt{8d52da94} are pinned in the result artifact. Seven of 59{,}875 BLiMP pairs tied under every model and were resolved with a fixed seed; no supplement pairs tied. Full per-paradigm outputs are in \texttt{paper/figures/blimp\_eval.json}.
+\paragraph{BLiMP protocol.} \texttt{src/common/blimp\_eval.py} reproduces the official BabyLM 2026 causal scorer directly against native checkpoints: summed log-probability over every non-BOS sentence token, temperature 1, macro-averaged by UID \citep{warstadt2020blimp}. Evaluator commit \texttt{3d57ddc8} and data revision \texttt{8d52da94} are pinned and identical across all 13 evaluated models. Seven of 59{,}875 BLiMP pairs tied under every model and were resolved with a fixed seed.
 
-\begin{table}[t]
-\centering
-\small
-\setlength{\tabcolsep}{4.5pt}
-\begin{tabular}{lrrrr}
-\toprule
-Model & Morph. & Sem. & Syntax & Syn./sem. \\
-\midrule
-\textbf{GQA baseline} & \textbf{85.60} & \textbf{61.43} & \textbf{65.40} & \textbf{68.82} \\
-GDN 2:1       & 70.76 & 47.28 & 60.98 & 63.32 \\
-Recursive 2:1 & 72.35 & 60.14 & 63.11 & 64.75 \\
-GDN 3:1       & 72.48 & 48.68 & 61.32 & 63.99 \\
-Recursive 3:1 & 78.80 & 58.91 & 62.71 & 67.05 \\
-\bottomrule
-\end{tabular}
-\caption{BLiMP micro-accuracy by broad linguistic field. The all-attention baseline leads every field, with its largest margin over the strongest hybrid in morphology; recursion's largest within-pair field gain is semantics.}
-\label{tab:blimp-fields}
-\end{table}
-
-\paragraph{Extra logging for the recursive models.} Per-super-block gradient norms and per-recursion-pass activation RMS were logged throughout; activation RMS grows smoothly and roughly linearly across the three passes (end of training, Recursive 2:1: $1.06 \to 1.60 \to 2.12$ in super-block 0 and $2.79 \to 3.82 \to 5.01$ in super-block 1; Recursive 3:1: $1.29 \to 1.92 \to 2.51$ and $3.40 \to 4.79 \to 6.47$) with no sign of divergence, consistent with the $1/\sqrt{2 D_{\text{eff}}}$ residual initialization.
-
-\paragraph{Commands.} \texttt{src/common/param\_count.py} reproduces the parameter table; \texttt{src/common/smoke\_test.py} is the pre-training gate; \texttt{modal\_train.py::main -{}-variant <name>} reproduces any single run; \texttt{modal\_train.py::ckpt\_eval} reproduces Tables~\ref{tab:final}, \ref{tab:traj}, and \ref{tab:pos}; \texttt{modal\_train.py::blimp\_eval\_all} reproduces Tables~\ref{tab:blimp} and \ref{tab:blimp-fields}; \texttt{paper/figures/paired\_uncertainty.py} reproduces the paired intervals; \texttt{paper/figures/make\_figures.py} regenerates Figures \ref{fig:curves}--\ref{fig:scatter}.
+\paragraph{Extra logging for the recursive models.} Per-super-block gradient norms and per-recursion-pass activation RMS were logged throughout; activation RMS grows smoothly and roughly linearly across the three passes (Recursive 2:1: $1.06 \rightarrow 1.60 \rightarrow 2.12$ in super-block 0 and $2.79 \rightarrow 3.82 \rightarrow 5.01$ in super-block 1) with no sign of divergence, consistent with the $1/\sqrt{2 D_{\text{eff}}}$ residual initialization.
 
 \end{document}

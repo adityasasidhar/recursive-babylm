@@ -28,8 +28,9 @@ def main() -> int:
         cfgs[name] = (cfg, sum(p.numel() for p in model.parameters()))
         del model
 
+    w = max(len(n) for n in VARIANTS)
     print(
-        f"{'variant':<16} {'d_model':>7} {'uniq layers':>11} {'SBs':>3} {'R':>2} "
+        f"{'variant':<{w}} {'d_model':>7} {'uniq layers':>11} {'SBs':>3} {'R':>2} "
         f"{'eff depth':>9} {'d_ff':>5} {'non-embed':>12} {'total':>12}"
     )
     for name in VARIANTS:
@@ -38,7 +39,7 @@ def main() -> int:
         r = getattr(cfg, "n_recursions", 1)
         uniq = sbs * cfg.n_layers
         print(
-            f"{name:<16} {cfg.d_model:>7} {uniq:>11} {sbs:>3} {r:>2} "
+            f"{name:<{w}} {cfg.d_model:>7} {uniq:>11} {sbs:>3} {r:>2} "
             f"{uniq * r:>9} {cfg.d_ff:>5} {counts[name]:>12,} {total:>12,}"
         )
 
@@ -59,6 +60,29 @@ def main() -> int:
                 found = True
     if not found:
         print("  (none at current configs)")
+
+    # Revision arms (BabyLM 2026 review response). These have invariants worth
+    # checking rather than merely printing, so this section reports PASS/FAIL —
+    # but the script stays informational and still exits 0 (smoke_test is the
+    # gate that fails builds).
+    print("\nrevision arms:")
+    for base, deep, mult in (("gdn_2to1", "untied_2to1_deep", 3),
+                             ("gdn_3to1", "untied_3to1_deep", 3)):
+        if base not in counts or deep not in counts:
+            continue
+        # every non-embedding parameter is per-layer except the final norm,
+        # so tripling the layer count triples everything but norm_f's d_model
+        d_model = cfgs[base][0].d_model
+        expect = (counts[base] - d_model) * mult + d_model
+        ok = "PASS" if counts[deep] == expect else f"FAIL (expected {expect:,})"
+        print(f"  {deep}: {counts[deep]:,} non-embed = {mult}x {base}'s layers  [{ok}]")
+    for rec in ("recursive_2to1", "recursive_3to1"):
+        abl = f"{rec}_uniqinit"
+        if rec not in counts or abl not in counts:
+            continue
+        ok = "PASS" if counts[abl] == counts[rec] else "FAIL"
+        print(f"  {abl}: parameter-identical to {rec} "
+              f"({counts[abl]:,} non-embed; init-only change)  [{ok}]")
     return 0
 
 

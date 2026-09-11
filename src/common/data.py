@@ -13,6 +13,7 @@ accepts any local directory of such files.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -42,16 +43,54 @@ def prepare(corpus_dir: str | Path, out_path: str | Path, split: str = "train") 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     all_ids: list[np.ndarray] = []
     n_tokens = 0
+    domains: list[dict] = []
     for f in files:
         ids = tok.encode(f.read_text(encoding="utf-8", errors="replace"))
         ids.append(EOS_TOKEN_ID)
         arr = np.asarray(ids, dtype=np.uint16)
         all_ids.append(arr)
+        # half-open [start, end) token range of this source file in the flat bin
+        domains.append({"name": f.name.split(".")[0],
+                        "file": f.name,
+                        "start": n_tokens,
+                        "end": n_tokens + int(arr.size)})
         n_tokens += arr.size
         print(f"  {f.name}: {arr.size:,} tokens")
     flat = np.concatenate(all_ids)
     flat.tofile(out_path)
+    write_domain_manifest(out_path, n_tokens, domains)
     print(f"wrote {n_tokens:,} tokens -> {out_path}")
+
+
+def domain_manifest_path(bin_path: str | Path) -> Path:
+    """Sidecar recording which token range of `bin_path` came from which source
+    file. Concatenation order is sorted-filename, so these ranges are the only
+    way to attribute a token offset back to a corpus domain after the fact."""
+    bin_path = Path(bin_path)
+    return bin_path.with_name(bin_path.name + ".domains.json")
+
+
+def write_domain_manifest(bin_path: str | Path, n_tokens: int,
+                          domains: list[dict]) -> Path:
+    dest = domain_manifest_path(bin_path)
+    dest.write_text(json.dumps(
+        {"tokens": int(n_tokens), "domains": domains}, indent=2))
+    print(f"wrote domain manifest ({len(domains)} domains) -> {dest}")
+    return dest
+
+
+def load_domain_manifest(bin_path: str | Path) -> list[dict]:
+    """[{name, file, start, end}] for `bin_path`, asserted against its length."""
+    import numpy as _np
+
+    src = domain_manifest_path(bin_path)
+    manifest = json.loads(src.read_text())
+    n_bin = len(_np.memmap(bin_path, dtype=np.uint16, mode="r"))
+    if manifest["tokens"] != n_bin:
+        raise ValueError(
+            f"{src} describes {manifest['tokens']:,} tokens but {bin_path} "
+            f"holds {n_bin:,} — the manifest is stale, rebuild it")
+    return manifest["domains"]
 
 
 class LMChunkDataset(Dataset):

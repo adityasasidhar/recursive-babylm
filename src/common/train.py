@@ -430,10 +430,15 @@ if __name__ == "__main__":
     ap.add_argument("--micro-batch-size", type=int, default=tc0.micro_batch_size)
     ap.add_argument("--token-budget", type=int, default=tc0.token_budget)
     ap.add_argument("--warmup-steps", type=int, default=tc0.warmup_steps)
+    ap.add_argument("--seed", type=int, default=tc0.seed,
+                    help="drives BOTH weight init and the data-order permutation, "
+                         "so a seed group is internally controlled across variants")
+    ap.add_argument("--ckpt-every-tokens", type=int, default=tc0.ckpt_every_tokens)
     args = ap.parse_args()
     tc = TrainConfig(lr=args.lr, seq_len=args.seq_len, batch_size=args.batch_size,
                      micro_batch_size=args.micro_batch_size,
-                     token_budget=args.token_budget, warmup_steps=args.warmup_steps)
+                     token_budget=args.token_budget, warmup_steps=args.warmup_steps,
+                     seed=args.seed, ckpt_every_tokens=args.ckpt_every_tokens)
     run = f"{args.variant}{'_' + args.tag if args.tag else ''}"
     train(args.variant, args.data, args.out or f"checkpoints/{run}", tc,
           val_path=args.val_data, use_wandb=args.wandb, tag=args.tag,

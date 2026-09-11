@@ -65,10 +65,17 @@ def smoke_one(name: str, steps: int) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--steps", type=int, default=30)
+    ap.add_argument("--variants", default="",
+                    help="comma-separated subset (default: all registered). The "
+                         "deep revision arms may not fit the 4GB local GPU — run "
+                         "those on Modal via check_env.")
     args = ap.parse_args()
     assert torch.cuda.is_available(), "CUDA GPU required for fla GDN kernels"
+    chosen = [v.strip() for v in args.variants.split(",") if v.strip()] or list(VARIANTS)
+    unknown = [v for v in chosen if v not in VARIANTS]
+    assert not unknown, f"unknown variants {unknown}; choose from {list(VARIANTS)}"
     print(f"device: {torch.cuda.get_device_name()}  dummy batch: {B}x{T}\n")
-    results = [smoke_one(name, args.steps) for name in VARIANTS]
+    results = [smoke_one(name, args.steps) for name in chosen]
     print("\nALL PASS" if all(results) else "\nFAILURES — see above")
     return 0 if all(results) else 1
 
