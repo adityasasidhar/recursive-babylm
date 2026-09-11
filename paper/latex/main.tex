@@ -1,7 +1,7 @@
-% BabyLM 2026 workshop submission — EMNLP 2026 workshop (ACL) style.
+% BabyLM 2026 workshop camera-ready — EMNLP 2026 workshop (ACL) style.
 % Build: tectonic main.tex   (or pdflatex + bibtex twice)
 \documentclass[11pt]{article}
-\usepackage[review]{acl}
+\usepackage[final]{acl}
 \usepackage{times}
 \usepackage{latexsym}
 \usepackage[T1]{fontenc}
@@ -10,6 +10,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{amsmath}
+\usepackage{url}
 
 % float-only pages (the appendix provenance table) anchor to the top instead
 % of centering vertically
@@ -20,9 +21,9 @@
 
 \title{When Does Depth Recursion Pay? A Parameter-Matched Study of\\Weight-Tied Hybrid Transformers on 100M Unique Words}
 
-% De-anonymize for camera-ready: restore the author block and switch
-% \usepackage[review]{acl} back to [preprint] or [final].
-\author{Anonymous ACL submission}
+\author{Aditya Sasidhar \\
+  Independent Researcher \\
+  \texttt{telikicherlaadityasasidhar@gmail.com}}
 
 \begin{document}
 \maketitle
@@ -403,6 +404,8 @@ Across 21 controlled runs, weight-tied depth recursion improves parameter-matche
 \paragraph{Recipe.} Sequence length 4{,}096; batch 32 sequences = 131{,}072 tokens per optimizer step. AdamW \citep{loshchilov2019adamw} with $\beta = (0.9, 0.95)$, weight decay 0.1 on matrices only, gradient clipping 1.0; peak learning rate $6\times10^{-4}$ with cosine decay to 10\% of peak; bf16 autocast with fp32 master weights. The primary budget is 3{,}814 steps = 499{,}908{,}608 tokens $\approx$ 2.9 epochs $\approx$ 295M words, with 250 warmup steps.
 
 \paragraph{Hardware.} Every run trains on a single H100-80GB (Modal); the full grid is ${\sim}$12 GPU-hours. All 21 runs completed with zero loss spikes (Figure~\ref{fig:curves}).
+
+\paragraph{Code and artifacts.} Source code, model and variant definitions, the training and evaluation pipelines, and the evaluation artifacts behind every table and figure are available at \url{https://github.com/adityasasidhar/recursive-babylm}.
 
 \begin{table*}[t]
 \centering

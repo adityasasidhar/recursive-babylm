@@ -1,12 +1,8 @@
 # When Does Depth Recursion Pay? A Parameter-Matched Study of Weight-Tied Hybrid Transformers on 100M Unique Words
 
-**Anonymous ACL submission**
+**Aditya Sasidhar** — Independent Researcher — telikicherlaadityasasidhar@gmail.com
 
-<!-- De-anonymize for camera-ready: restore the author line and email here,
-     restore the code/artifacts link below, uncomment the Acknowledgments
-     section, and switch paper/latex/main.tex from [review] to [preprint]. -->
-
-*Submission to the BabyLM 2026 workshop (paper track). Target format: EMNLP 2026 workshop style, ≤8 pages.*
+*Camera-ready for the BabyLM 2026 workshop (paper track), EMNLP 2026. Submission 18, archival.*
 
 ## Abstract
 
@@ -33,7 +29,7 @@ We run the study inside a modern *hybrid* architecture that interleaves Gated De
 
 **Evaluation note.** A training-time logger averaged per-*batch* means with batch size tied to a memory setting, biasing four logged losses by about −0.025. That logger has since been fixed to weight by rows; every validation number below is recomputed from checkpoints with uniform per-token weighting regardless. Appendix A documents the pitfall, its fix, and the calibration confirming both.
 
-**Code and artifacts.** Source code, evaluation artifacts, and reproduction scripts will be released on publication; the repository link is withheld for anonymous review.
+**Code and artifacts.** Source code, model and variant definitions, the training and evaluation pipelines, and the evaluation artifacts behind every table and figure are available at https://github.com/adityasasidhar/recursive-babylm.
 
 ## 2 Related Work
 
